@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -127,9 +128,13 @@ export function AppShell({
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:w-[264px] lg:shrink-0 lg:flex-col lg:rounded-3xl lg:bg-[var(--brand-ink)] lg:p-4 lg:shadow-[var(--shadow-panel)]">
         <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white font-[family-name:var(--font-display)] text-base font-extrabold text-[var(--brand-ink)]">
-            N
-          </div>
+          <Image
+            src="/images/logo-mark.png"
+            alt="Naeem & Sons logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-xl bg-white object-contain p-1"
+          />
           <div>
             <p className="font-[family-name:var(--font-display)] text-[15px] font-bold leading-tight text-white">
               Naeem &amp; Sons
@@ -205,9 +210,13 @@ export function AppShell({
         {/* Mobile header */}
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--line)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur lg:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-ink)] font-[family-name:var(--font-display)] text-sm font-extrabold text-white">
-              N
-            </div>
+            <Image
+              src="/images/logo-mark.png"
+              alt="Naeem & Sons logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg bg-white object-contain p-0.5"
+            />
             <div>
               <p className="font-[family-name:var(--font-display)] text-sm font-bold text-[var(--ink)]">
                 Naeem &amp; Sons
