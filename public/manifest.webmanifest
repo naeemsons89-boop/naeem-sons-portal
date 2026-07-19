@@ -1,0 +1,24 @@
+{
+  "name": "Naeem & Sons Portal",
+  "short_name": "N&S Portal",
+  "description": "Snack distribution warehouse portal",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#f3f1eb",
+  "theme_color": "#0f6b4c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

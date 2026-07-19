@@ -1,0 +1,50 @@
+import { redirect } from "next/navigation";
+
+import { ExchangeClient } from "@/components/exchange-client";
+import { PageHeader } from "@/components/ui";
+import { getSessionProfile } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { createClient } from "@/lib/supabase/server";
+import type { AppRole } from "@/types/database";
+
+export default async function ExchangesPage() {
+  const { profile } = await getSessionProfile();
+  if (!can(profile?.role as AppRole, "focExchange")) redirect("/app");
+
+  const supabase = await createClient();
+  const [{ data: customers }, { data: skus }, { data: exchanges }, { data: wh }] =
+    await Promise.all([
+      supabase.from("customers").select("id,code,name").eq("is_active", true).order("name"),
+      supabase
+        .from("skus")
+        .select("id,product_code,description")
+        .eq("is_active", true)
+        .order("product_code")
+        .limit(500),
+      supabase
+        .from("exchange_notes")
+        .select("id,exchange_no,status")
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.from("warehouses").select("id").eq("code", "MAIN_WHS").maybeSingle(),
+    ]);
+
+  if (!wh?.id) {
+    return <PageHeader title="Exchange" description="MAIN_WHS missing" />;
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Exchange"
+        description="OUT uses pickable stock. IN returns to warehouse by condition."
+      />
+      <ExchangeClient
+        customers={(customers ?? []) as { id: string; code: string; name: string }[]}
+        skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}
+        warehouseId={wh.id as string}
+        initial={(exchanges ?? []) as Record<string, unknown>[]}
+      />
+    </div>
+  );
+}

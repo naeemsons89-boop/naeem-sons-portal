@@ -1,0 +1,315 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { Button, Card, Input, Label } from "@/components/ui";
+
+type Props = {
+  grn: Record<string, unknown>;
+  lines: Record<string, unknown>[];
+  canPhysical: boolean;
+  canFinance: boolean;
+};
+
+export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [invoiceNo, setInvoiceNo] = useState(
+    (grn.supplier_invoice_no as string) || "",
+  );
+  const [invoiceDate, setInvoiceDate] = useState(
+    (grn.supplier_invoice_date as string) ||
+      new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }),
+  );
+  const [tax, setTax] = useState(String(grn.invoice_tax_amount ?? 0));
+  const [discount, setDiscount] = useState(
+    String(grn.invoice_discount_amount ?? 0),
+  );
+  const [prices, setPrices] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const line of lines) {
+      init[line.id as string] = String(line.purchase_price_pack ?? "");
+    }
+    return init;
+  });
+
+  const physicalDone = Boolean(grn.physical_posted_at);
+  const financeDone = grn.finance_status === "posted";
+  const supplier = grn.supplier as { name?: string } | null;
+  const warehouse = grn.warehouse as { code?: string; name?: string } | null;
+
+  const lineTotal = useMemo(() => {
+    return lines.reduce((sum, line) => {
+      const price = Number(prices[line.id as string] || 0);
+      return sum + price * Number(line.qty_units || 0);
+    }, 0);
+  }, [lines, prices]);
+
+  async function postPhysical() {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/grn/${grn.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "physical" }),
+    });
+    const json = (await res.json()) as { message?: string; error?: string };
+    setLoading(false);
+    if (!res.ok) {
+      setError(json.error ?? "Physical post failed");
+      return;
+    }
+    setMessage(json.message ?? "Posted");
+    router.refresh();
+  }
+
+  async function postFinance() {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/grn/${grn.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "finance",
+        finance: {
+          supplier_invoice_no: invoiceNo,
+          supplier_invoice_date: invoiceDate,
+          invoice_tax_amount: Number(tax || 0),
+          invoice_discount_amount: Number(discount || 0),
+          invoice_total_amount: lineTotal + Number(tax || 0) - Number(discount || 0),
+          lines: lines.map((line) => ({
+            id: line.id as string,
+            purchase_price_pack: Number(prices[line.id as string]),
+            purchase_price_ctn: (line.purchase_price_ctn as number) ?? null,
+          })),
+        },
+      }),
+    });
+    const json = (await res.json()) as { message?: string; error?: string };
+    setLoading(false);
+    if (!res.ok) {
+      setError(json.error ?? "Finance post failed");
+      return;
+    }
+    setMessage(json.message ?? "Posted");
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="grid gap-2 sm:grid-cols-2">
+        <p className="text-sm">
+          <span className="text-[var(--ink-muted)]">Supplier:</span>{" "}
+          <strong>{supplier?.name ?? "—"}</strong>
+        </p>
+        <p className="text-sm">
+          <span className="text-[var(--ink-muted)]">Warehouse:</span>{" "}
+          <strong>
+            {warehouse?.code} — {warehouse?.name}
+          </strong>
+        </p>
+        <p className="text-sm">
+          <span className="text-[var(--ink-muted)]">Truck:</span>{" "}
+          {(grn.truck_no as string) || "—"}
+        </p>
+        <p className="text-sm">
+          <span className="text-[var(--ink-muted)]">Transporter:</span>{" "}
+          {(grn.transporter_name as string) || "—"}
+        </p>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <span className="rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold uppercase">
+            {physicalDone ? "Physical posted" : "Awaiting physical"}
+          </span>
+          <span
+            className={`rounded-full px-2 py-1 text-xs font-semibold uppercase ${
+              financeDone
+                ? "bg-[var(--brand-soft)] text-[var(--brand-dark)]"
+                : "bg-amber-100 text-amber-900"
+            }`}
+          >
+            Finance {String(grn.finance_status)}
+          </span>
+          <a
+            href={`/app/print/grn/${grn.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-[var(--brand)] px-2 py-1 text-xs font-semibold text-[var(--brand)]"
+          >
+            Print PDF
+          </a>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 font-semibold">Lines</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase text-[var(--ink-muted)]">
+              <tr>
+                <th className="py-2 pr-3">#</th>
+                <th className="py-2 pr-3">SKU</th>
+                <th className="py-2 pr-3">Batch</th>
+                <th className="py-2 pr-3">Mfg / Exp</th>
+                <th className="py-2 pr-3">Units</th>
+                <th className="py-2 pr-3">Short / Dmg</th>
+                <th className="py-2">Purchase / pack</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const sku = line.sku as {
+                  product_code?: string;
+                  description?: string;
+                } | null;
+                return (
+                  <tr key={line.id as string} className="border-t border-[var(--line)]">
+                    <td className="py-2 pr-3">{line.line_no as number}</td>
+                    <td className="py-2 pr-3">
+                      <div className="font-medium">{sku?.product_code}</div>
+                      <div className="text-xs text-[var(--ink-muted)]">
+                        {sku?.description}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-xs">
+                      {line.batch_code as string}
+                    </td>
+                    <td className="py-2 pr-3 text-xs">
+                      {(line.mfg_date as string) || "—"}
+                      <br />
+                      {(line.expiry_date as string) || "—"}
+                    </td>
+                    <td className="py-2 pr-3">{line.qty_units as number}</td>
+                    <td className="py-2 pr-3">
+                      {line.shortage_units as number} / {line.damage_units as number}
+                    </td>
+                    <td className="py-2">
+                      {canFinance && physicalDone && !financeDone ? (
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          className="w-28"
+                          value={prices[line.id as string] ?? ""}
+                          onChange={(e) =>
+                            setPrices((p) => ({
+                              ...p,
+                              [line.id as string]: e.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        String(line.purchase_price_pack ?? "—")
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {!physicalDone && canPhysical ? (
+        <Card>
+          <h2 className="font-semibold">1. Post physical receive</h2>
+          <p className="mt-1 text-sm text-[var(--ink-muted)]">
+            Creates batches and puts stock in warehouse as{" "}
+            <strong>finance pending</strong> (not pickable yet).
+          </p>
+          <Button
+            className="mt-3"
+            size="lg"
+            disabled={loading}
+            onClick={() => void postPhysical()}
+          >
+            {loading ? "Posting…" : "Confirm physical receive"}
+          </Button>
+        </Card>
+      ) : null}
+
+      {physicalDone && !financeDone && canFinance ? (
+        <Card className="space-y-3">
+          <h2 className="font-semibold">2. Post finance (unlock picking)</h2>
+          <p className="text-sm text-[var(--ink-muted)]">
+            Enter supplier invoice details. Prices default from price list — edit if
+            invoice differs.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Supplier invoice no</Label>
+              <Input
+                value={invoiceNo}
+                onChange={(e) => setInvoiceNo(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label>Invoice date</Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label>Tax amount</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={tax}
+                onChange={(e) => setTax(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Discount amount</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+              />
+            </div>
+          </div>
+          <p className="text-sm">
+            Estimated total:{" "}
+            <strong>
+              {(lineTotal + Number(tax || 0) - Number(discount || 0)).toFixed(2)}
+            </strong>
+          </p>
+          <Button
+            size="lg"
+            disabled={loading}
+            onClick={() => void postFinance()}
+          >
+            {loading ? "Posting…" : "Post finance & unlock stock"}
+          </Button>
+        </Card>
+      ) : null}
+
+      {physicalDone && !canFinance && !financeDone ? (
+        <Card>
+          <p className="text-sm text-[var(--ink-muted)]">
+            Physical receive is done. Waiting for Admin / Manager to post finance.
+          </p>
+        </Card>
+      ) : null}
+
+      {financeDone ? (
+        <Card>
+          <p className="text-sm text-[var(--brand)]">
+            Finance posted. These batches are pickable for dispatch.
+          </p>
+        </Card>
+      ) : null}
+
+      {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
+    </div>
+  );
+}
