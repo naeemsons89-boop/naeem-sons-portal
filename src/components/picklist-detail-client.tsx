@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ScanField } from "@/components/barcode-scanner";
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, statusTone } from "@/components/ui";
 
 type BatchOpt = {
   batch_id: string;
@@ -227,14 +227,12 @@ export function PicklistDetailClient({
           <span className="text-[var(--ink-muted)]">DA:</span>{" "}
           {(picklist.da_route as { code?: string } | null)?.code || "—"}
         </p>
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <span className="rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold uppercase">
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <Badge tone={statusTone(String(picklist.status))} className="capitalize">
             {String(picklist.status)}
-          </span>
+          </Badge>
           {gatePass ? (
-            <span className="rounded-full bg-[var(--brand-soft)] px-2 py-1 text-xs font-semibold text-[var(--brand-dark)]">
-              GP {String(gatePass.gate_pass_no)}
-            </span>
+            <Badge tone="success">GP {String(gatePass.gate_pass_no)}</Badge>
           ) : null}
           <a
             href={`/app/print/picklist/${picklist.id}`}
@@ -318,11 +316,7 @@ export function PicklistDetailClient({
                       )}
                     </p>
                   </div>
-                  {isDiff ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase text-amber-900">
-                      Override → manager
-                    </span>
-                  ) : null}
+                  {isDiff ? <Badge tone="warning">Override → manager</Badge> : null}
                 </div>
 
                 {!loadedOut && canPick ? (
@@ -345,7 +339,7 @@ export function PicklistDetailClient({
                       <div>
                         <Label>Batch scanned / used</Label>
                         <select
-                          className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                          className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                           value={pick.batchId}
                           onChange={(e) =>
                             setPicks((p) => ({
@@ -444,7 +438,7 @@ export function PicklistDetailClient({
                     #{line.line_no} {line.sku?.product_code}
                   </p>
                   <select
-                    className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                    className="rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                     value={overrides[line.id] || ""}
                     onChange={(e) =>
                       setOverrides((o) => ({

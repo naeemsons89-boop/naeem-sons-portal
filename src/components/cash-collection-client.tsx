@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Avatar, Badge, Button, Card, EmptyState, Input, Label } from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type PicklistOpt = { id: string; picklist_no: string; delivery_date: string };
@@ -117,7 +117,7 @@ export function CashCollectionClient({
             <div>
               <Label>Picklist</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={picklistId}
                 onChange={(e) => {
                   setPicklistId(e.target.value);
@@ -136,7 +136,7 @@ export function CashCollectionClient({
             <div>
               <Label>Gate pass</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={gatePassId}
                 onChange={(e) => setGatePassId(e.target.value)}
                 required
@@ -152,7 +152,7 @@ export function CashCollectionClient({
             <div>
               <Label>Customer</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
                 required
@@ -203,7 +203,7 @@ export function CashCollectionClient({
                 <div>
                   <Label>Method</Label>
                   <select
-                    className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                     value={p.method}
                     onChange={(e) =>
                       setPayments((prev) =>
@@ -343,28 +343,42 @@ export function CashCollectionClient({
 
       <Card>
         <h2 className="mb-2 font-semibold">Recent collections</h2>
-        {rows.map((r) => {
-          const customer = r.customer as { code?: string; name?: string } | null;
-          const gp = r.gate_pass as { gate_pass_no?: string } | null;
-          return (
-            <div key={r.id as string} className="flex justify-between text-sm">
-              <span>
-                {String(r.collection_no)} · {customer?.code} · GP {gp?.gate_pass_no}
-              </span>
-              <a
-                className="font-semibold text-[var(--brand)]"
-                href={`/app/print/cash-collection/${r.id}`}
-                target="_blank"
-                rel="noreferrer"
+        <div className="space-y-2">
+          {rows.map((r) => {
+            const customer = r.customer as { code?: string; name?: string } | null;
+            const gp = r.gate_pass as { gate_pass_no?: string } | null;
+            return (
+              <div
+                key={r.id as string}
+                className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
               >
-                Print
-              </a>
-            </div>
-          );
-        })}
-        {rows.length === 0 ? (
-          <p className="text-sm text-[var(--ink-muted)]">No collections yet.</p>
-        ) : null}
+                <div className="flex items-center gap-2">
+                  <Avatar name={customer?.name ?? String(r.collection_no)} size="sm" />
+                  <div>
+                    <p className="font-medium">{String(r.collection_no)}</p>
+                    <p className="text-xs text-[var(--ink-muted)]">
+                      {customer?.code} · GP {gp?.gate_pass_no}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge tone={r.collected_at ? "success" : "pending"}>
+                    {r.collected_at ? "Completed" : "Pending"}
+                  </Badge>
+                  <a
+                    className="font-semibold text-[var(--brand)]"
+                    href={`/app/print/cash-collection/${r.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Print
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {rows.length === 0 ? <EmptyState>No collections yet.</EmptyState> : null}
       </Card>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}

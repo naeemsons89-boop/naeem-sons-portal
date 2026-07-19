@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchGrn } from "@/lib/grn-server";
 import { createClient } from "@/lib/supabase/server";
@@ -58,19 +58,13 @@ export default async function GrnListPage() {
                       {g.supplier_delivery_no || "—"} · {g.delivery_date}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase">
-                    <span className="rounded-full bg-[var(--surface-2)] px-2 py-1">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone={g.physical_posted_at ? "success" : "pending"}>
                       {g.physical_posted_at ? "Physical OK" : "Draft / receive"}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-1 ${
-                        g.finance_status === "posted"
-                          ? "bg-[var(--brand-soft)] text-[var(--brand-dark)]"
-                          : "bg-amber-100 text-amber-900"
-                      }`}
-                    >
+                    </Badge>
+                    <Badge tone={g.finance_status === "posted" ? "success" : "warning"}>
                       Finance {g.finance_status}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
               </Card>
@@ -78,11 +72,7 @@ export default async function GrnListPage() {
           );
         })}
         {grns.length === 0 ? (
-          <Card>
-            <p className="text-sm text-[var(--ink-muted)]">
-              No GRNs yet. Create one from a supplier delivery note.
-            </p>
-          </Card>
+          <EmptyState>No GRNs yet. Create one from a supplier delivery note.</EmptyState>
         ) : null}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { canTouchPicklist } from "@/lib/picklist-server";
@@ -56,31 +56,21 @@ export default async function PicklistsPage() {
                     {p.warehouse?.code ?? "MAIN_WHS"} · {p.delivery_date}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase">
-                  <span className="rounded-full bg-[var(--surface-2)] px-2 py-1">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone={statusTone(p.status)} className="capitalize">
                     {p.status}
-                  </span>
-                  {p.load_out_at ? (
-                    <span className="rounded-full bg-[var(--brand-soft)] px-2 py-1 text-[var(--brand-dark)]">
-                      Out
-                    </span>
-                  ) : null}
-                  {p.load_in_at ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-900">
-                      In
-                    </span>
-                  ) : null}
+                  </Badge>
+                  {p.load_out_at ? <Badge tone="success">Out</Badge> : null}
+                  {p.load_in_at ? <Badge tone="warning">In</Badge> : null}
                 </div>
               </div>
             </Card>
           </Link>
         ))}
         {picklists.length === 0 ? (
-          <Card>
-            <p className="text-sm text-[var(--ink-muted)]">
-              No picklists yet. Create one after finance-posted stock is available.
-            </p>
-          </Card>
+          <EmptyState>
+            No picklists yet. Create one after finance-posted stock is available.
+          </EmptyState>
         ) : null}
       </div>
     </div>

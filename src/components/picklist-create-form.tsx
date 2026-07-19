@@ -258,7 +258,7 @@ export function PicklistCreateForm({
             <div>
               <Label>Select customer</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={block.customer_id}
                 onChange={(e) =>
                   setBlocks((prev) =>

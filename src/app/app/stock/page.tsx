@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, PageHeader } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { AppRole } from "@/types/database";
@@ -38,17 +38,17 @@ export default async function StockPage() {
         title="Stock"
         description="On-hand by SKU / batch / condition. Only finance=posted + good is pickable."
       />
-      <Card className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-[var(--ink-muted)]">
+      <Card>
+        <Table>
+          <thead>
             <tr>
-              <th className="py-2 pr-3">SKU</th>
-              <th className="py-2 pr-3">Batch</th>
-              <th className="py-2 pr-3">Expiry</th>
-              <th className="py-2 pr-3">Qty</th>
-              <th className="py-2 pr-3">Condition</th>
-              <th className="py-2 pr-3">Finance</th>
-              {showFinance ? <th className="py-2">Value</th> : null}
+              <Th>SKU</Th>
+              <Th>Batch</Th>
+              <Th>Expiry</Th>
+              <Th>Qty</Th>
+              <Th>Condition</Th>
+              <Th>Finance</Th>
+              {showFinance ? <Th>Value</Th> : null}
             </tr>
           </thead>
           <tbody>
@@ -61,46 +61,30 @@ export default async function StockPage() {
                   ? qty * Number(sku.purchase_price_pack)
                   : null;
               return (
-                <tr key={row.id} className="border-t border-[var(--line)]">
-                  <td className="py-2 pr-3">
+                <tr key={row.id}>
+                  <Td>
                     <div className="font-medium">{sku?.product_code}</div>
                     <div className="text-xs text-[var(--ink-muted)]">
                       {sku?.description}
                     </div>
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-xs">
-                    {batch?.batch_code}
-                  </td>
-                  <td className="py-2 pr-3 text-xs">
-                    {batch?.expiry_date || "—"}
-                  </td>
-                  <td className="py-2 pr-3">{qty}</td>
-                  <td className="py-2 pr-3">{row.condition}</td>
-                  <td className="py-2 pr-3">
-                    <span
-                      className={
-                        row.finance_status === "posted"
-                          ? "text-[var(--brand)]"
-                          : "text-amber-700"
-                      }
-                    >
+                  </Td>
+                  <Td className="font-mono text-xs">{batch?.batch_code}</Td>
+                  <Td className="text-xs">{batch?.expiry_date || "—"}</Td>
+                  <Td>{qty}</Td>
+                  <Td className="capitalize">{row.condition}</Td>
+                  <Td>
+                    <Badge tone={row.finance_status === "posted" ? "success" : "warning"}>
                       {row.finance_status}
-                    </span>
-                  </td>
-                  {showFinance ? (
-                    <td className="py-2">
-                      {value != null ? value.toFixed(2) : "—"}
-                    </td>
-                  ) : null}
+                    </Badge>
+                  </Td>
+                  {showFinance ? <Td>{value != null ? value.toFixed(2) : "—"}</Td> : null}
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </Table>
         {rows.length === 0 ? (
-          <p className="py-4 text-sm text-[var(--ink-muted)]">
-            No stock yet. Create and post a GRN.
-          </p>
+          <EmptyState>No stock yet. Create and post a GRN.</EmptyState>
         ) : null}
       </Card>
     </div>

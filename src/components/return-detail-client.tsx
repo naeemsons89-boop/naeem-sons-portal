@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button, Card } from "@/components/ui";
+import { Badge, Button, Card, statusTone } from "@/components/ui";
 
 export function ReturnDetailClient({
   id,
@@ -56,9 +56,14 @@ export function ReturnDetailClient({
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="font-semibold">{String(r.return_no)}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{String(r.return_no)}</p>
+              <Badge tone={statusTone(String(r.status))} className="capitalize">
+                {String(r.status)}
+              </Badge>
+            </div>
             <p className="text-sm text-[var(--ink-muted)]">
-              {customer?.code} — {customer?.name} · {String(r.status)}
+              {customer?.code} — {customer?.name}
             </p>
           </div>
           <a

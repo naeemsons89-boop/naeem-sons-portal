@@ -159,7 +159,7 @@ export function GrnCreateForm({
         <div>
           <Label>Supplier</Label>
           <select
-            className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
           >

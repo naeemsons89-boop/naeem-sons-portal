@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type Sku = { id: string; product_code: string; description: string };
@@ -153,7 +153,7 @@ export function ReturnsClient({
           <div>
             <Label>Customer</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -167,7 +167,7 @@ export function ReturnsClient({
           <div>
             <Label>Reason</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value)}
             >
@@ -216,7 +216,7 @@ export function ReturnsClient({
             <div>
               <Label>Condition</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={condition}
                 onChange={(e) =>
                   setCondition(e.target.value as "good" | "near_expiry" | "damaged")
@@ -283,10 +283,17 @@ export function ReturnsClient({
               className="flex flex-col gap-2 rounded-lg border border-[var(--line)] p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-semibold">{r.return_no}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">{r.return_no}</p>
+                  <Badge tone={statusTone(r.status)} className="capitalize">
+                    {r.status}
+                  </Badge>
+                  {r.requires_unknown_batch_approval ? (
+                    <Badge tone="warning">Needs approval</Badge>
+                  ) : null}
+                </div>
                 <p className="text-sm text-[var(--ink-muted)]">
-                  {r.customer?.code} — {r.customer?.name} · {r.status}
-                  {r.requires_unknown_batch_approval ? " · needs approval" : ""}
+                  {r.customer?.code} — {r.customer?.name}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -304,9 +311,7 @@ export function ReturnsClient({
               </div>
             </div>
           ))}
-          {rows.length === 0 ? (
-            <p className="text-sm text-[var(--ink-muted)]">No returns yet.</p>
-          ) : null}
+          {rows.length === 0 ? <EmptyState>No returns yet.</EmptyState> : null}
         </div>
       </Card>
 

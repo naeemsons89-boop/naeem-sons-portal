@@ -1,19 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f1eb;
+  --background: #f0eee6;
   --foreground: #14201c;
   --brand: #0f6b4c;
   --brand-dark: #0a4d37;
   --brand-soft: #d8efe4;
+  --brand-ink: #0d1f19;
+  --brand-ink-2: #132a22;
   --accent: #c45c26;
   --ink: #14201c;
   --ink-muted: #5b6b64;
-  --line: #d5cec0;
+  --line: #e2ddd0;
   --surface: #ffffff;
   --surface-2: #ebe7de;
   --warn: #b45309;
   --danger: #b91c1c;
+
+  /* Categorical pills (tasks / reports list) */
+  --pill-purple-bg: #ece7fb;
+  --pill-purple-fg: #6743c6;
+  --pill-blue-bg: #dee9fc;
+  --pill-blue-fg: #2b62c9;
+  --pill-mint-bg: #dbf3e6;
+  --pill-mint-fg: #128a5b;
+  --pill-peach-bg: #fbeada;
+  --pill-peach-fg: #b5651d;
+
+  /* Status pills (tables) */
+  --status-success-bg: #dcf3e5;
+  --status-success-fg: #0f7a4f;
+  --status-warning-bg: #fdecc8;
+  --status-warning-fg: #97620a;
+  --status-pending-bg: #eceae3;
+  --status-pending-fg: #6b675c;
+  --status-danger-bg: #fbdede;
+  --status-danger-fg: #b91c1c;
+
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-card: 0 1px 2px rgba(20, 32, 28, 0.04), 0 10px 30px -12px rgba(20, 32, 28, 0.10);
+  --shadow-panel: 0 20px 60px -20px rgba(13, 31, 25, 0.35);
 }
 
 @theme inline {
@@ -25,9 +52,13 @@
 
 body {
   background:
-    radial-gradient(ellipse 80% 50% at 0% -10%, rgba(15, 107, 76, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(196, 92, 38, 0.08), transparent),
+    radial-gradient(ellipse 80% 50% at 0% -10%, rgba(15, 107, 76, 0.10), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(196, 92, 38, 0.06), transparent),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-body), system-ui, sans-serif;
+}
+
+* {
+  scrollbar-color: var(--line) transparent;
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Table, Td, Th } from "@/components/ui";
 
 type Props = {
   grn: Record<string, unknown>;
@@ -122,19 +122,13 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
           <span className="text-[var(--ink-muted)]">Transporter:</span>{" "}
           {(grn.transporter_name as string) || "—"}
         </p>
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <span className="rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold uppercase">
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <Badge tone={physicalDone ? "success" : "pending"}>
             {physicalDone ? "Physical posted" : "Awaiting physical"}
-          </span>
-          <span
-            className={`rounded-full px-2 py-1 text-xs font-semibold uppercase ${
-              financeDone
-                ? "bg-[var(--brand-soft)] text-[var(--brand-dark)]"
-                : "bg-amber-100 text-amber-900"
-            }`}
-          >
+          </Badge>
+          <Badge tone={financeDone ? "success" : "warning"}>
             Finance {String(grn.finance_status)}
-          </span>
+          </Badge>
           <a
             href={`/app/print/grn/${grn.id}`}
             target="_blank"
@@ -148,70 +142,66 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
 
       <Card>
         <h2 className="mb-3 font-semibold">Lines</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-[var(--ink-muted)]">
-              <tr>
-                <th className="py-2 pr-3">#</th>
-                <th className="py-2 pr-3">SKU</th>
-                <th className="py-2 pr-3">Batch</th>
-                <th className="py-2 pr-3">Mfg / Exp</th>
-                <th className="py-2 pr-3">Units</th>
-                <th className="py-2 pr-3">Short / Dmg</th>
-                <th className="py-2">Purchase / pack</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line) => {
-                const sku = line.sku as {
-                  product_code?: string;
-                  description?: string;
-                } | null;
-                return (
-                  <tr key={line.id as string} className="border-t border-[var(--line)]">
-                    <td className="py-2 pr-3">{line.line_no as number}</td>
-                    <td className="py-2 pr-3">
-                      <div className="font-medium">{sku?.product_code}</div>
-                      <div className="text-xs text-[var(--ink-muted)]">
-                        {sku?.description}
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3 font-mono text-xs">
-                      {line.batch_code as string}
-                    </td>
-                    <td className="py-2 pr-3 text-xs">
-                      {(line.mfg_date as string) || "—"}
-                      <br />
-                      {(line.expiry_date as string) || "—"}
-                    </td>
-                    <td className="py-2 pr-3">{line.qty_units as number}</td>
-                    <td className="py-2 pr-3">
-                      {line.shortage_units as number} / {line.damage_units as number}
-                    </td>
-                    <td className="py-2">
-                      {canFinance && physicalDone && !financeDone ? (
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          className="w-28"
-                          value={prices[line.id as string] ?? ""}
-                          onChange={(e) =>
-                            setPrices((p) => ({
-                              ...p,
-                              [line.id as string]: e.target.value,
-                            }))
-                          }
-                        />
-                      ) : (
-                        String(line.purchase_price_pack ?? "—")
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <thead>
+            <tr>
+              <Th>#</Th>
+              <Th>SKU</Th>
+              <Th>Batch</Th>
+              <Th>Mfg / Exp</Th>
+              <Th>Units</Th>
+              <Th>Short / Dmg</Th>
+              <Th>Purchase / pack</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => {
+              const sku = line.sku as {
+                product_code?: string;
+                description?: string;
+              } | null;
+              return (
+                <tr key={line.id as string}>
+                  <Td>{line.line_no as number}</Td>
+                  <Td>
+                    <div className="font-medium">{sku?.product_code}</div>
+                    <div className="text-xs text-[var(--ink-muted)]">
+                      {sku?.description}
+                    </div>
+                  </Td>
+                  <Td className="font-mono text-xs">{line.batch_code as string}</Td>
+                  <Td className="text-xs">
+                    {(line.mfg_date as string) || "—"}
+                    <br />
+                    {(line.expiry_date as string) || "—"}
+                  </Td>
+                  <Td>{line.qty_units as number}</Td>
+                  <Td>
+                    {line.shortage_units as number} / {line.damage_units as number}
+                  </Td>
+                  <Td>
+                    {canFinance && physicalDone && !financeDone ? (
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        className="w-28"
+                        value={prices[line.id as string] ?? ""}
+                        onChange={(e) =>
+                          setPrices((p) => ({
+                            ...p,
+                            [line.id as string]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      String(line.purchase_price_pack ?? "—")
+                    )}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
       </Card>
 
       {!physicalDone && canPhysical ? (

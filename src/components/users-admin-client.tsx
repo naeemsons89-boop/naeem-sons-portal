@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Avatar, Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
 import { ALL_ROLES, ROLE_LABELS } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/client";
 import type { AppRole, Profile, UserStatus } from "@/types/database";
@@ -116,7 +116,7 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
             <Label htmlFor="inviteRole">Role</Label>
             <select
               id="inviteRole"
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as AppRole)}
             >
@@ -147,17 +147,22 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
               key={user.id}
               className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
-                <p className="font-semibold">{user.full_name ?? "—"}</p>
-                <p className="text-sm text-[var(--ink-muted)]">{user.email}</p>
-                <p className="mt-1 text-xs uppercase tracking-wide text-[var(--accent)]">
-                  {user.status}
-                  {user.role ? ` · ${ROLE_LABELS[user.role]}` : ""}
-                </p>
+              <div className="flex items-center gap-3">
+                <Avatar src={user.avatar_url} name={user.full_name ?? user.email} />
+                <div>
+                  <p className="font-semibold">{user.full_name ?? "—"}</p>
+                  <p className="text-sm text-[var(--ink-muted)]">{user.email}</p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <Badge tone={statusTone(user.status)} className="capitalize">
+                      {user.status}
+                    </Badge>
+                    {user.role ? <Badge tone="mint">{ROLE_LABELS[user.role]}</Badge> : null}
+                  </div>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
-                  className="rounded-lg border border-[var(--line)] bg-white px-2 py-2 text-sm"
+                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
                   defaultValue={user.role ?? ""}
                   id={`role-${user.id}`}
                   disabled={busyId === user.id}
@@ -204,11 +209,7 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
               </div>
             </Card>
           ))}
-          {users.length === 0 ? (
-            <Card>
-              <p className="text-sm text-[var(--ink-muted)]">No users yet.</p>
-            </Card>
-          ) : null}
+          {users.length === 0 ? <EmptyState>No users yet.</EmptyState> : null}
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
           {canExport ? (
             <a
               href={csvUrl()}
-              className="inline-flex items-center rounded-lg border border-[var(--line)] bg-white px-4 py-2 text-sm font-semibold"
+              className="inline-flex items-center rounded-full border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-semibold hover:bg-[var(--surface-2)]"
             >
               Export CSV
             </a>

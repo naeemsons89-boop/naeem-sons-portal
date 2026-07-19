@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 
+const nextConfig: NextConfig = {
+  turbopack: {},
+};
+
+// PWA webpack plugin only in production builds (`npm run build --webpack`)
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
@@ -10,9 +15,6 @@ const withPWA = withPWAInit({
   },
 });
 
-const nextConfig: NextConfig = {
-  // next-pwa injects webpack plugins; production build uses --webpack
-  turbopack: {},
-};
-
-export default withPWA(nextConfig);
+export default process.env.NODE_ENV === "development"
+  ? nextConfig
+  : withPWA(nextConfig);

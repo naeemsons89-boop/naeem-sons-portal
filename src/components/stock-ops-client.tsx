@@ -158,7 +158,7 @@ export function StockOpsClient({
           <div>
             <Label>Direction</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={direction}
               onChange={(e) => setDirection(e.target.value as "in" | "out")}
             >
@@ -171,7 +171,7 @@ export function StockOpsClient({
             <div>
               <Label>From warehouse</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={fromWh}
                 onChange={(e) => setFromWh(e.target.value)}
               >
@@ -185,7 +185,7 @@ export function StockOpsClient({
             <div>
               <Label>To warehouse</Label>
               <select
-                className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
                 value={toWh}
                 onChange={(e) => setToWh(e.target.value)}
               >
@@ -205,7 +205,7 @@ export function StockOpsClient({
           onChange={(e) => setQ(e.target.value)}
         />
         <select
-          className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
           value={selectedKey}
           onChange={(e) => setSelectedKey(e.target.value)}
         >

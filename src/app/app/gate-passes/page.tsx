@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Card, PageHeader } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchPicklist } from "@/lib/picklist-server";
 import { createClient } from "@/lib/supabase/server";
@@ -44,7 +44,12 @@ export default async function GatePassesPage() {
           <Card key={g.id}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold">{g.gate_pass_no}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">{g.gate_pass_no}</p>
+                  <Badge tone={statusTone(g.status)} className="capitalize">
+                    {g.status}
+                  </Badge>
+                </div>
                 <p className="text-sm text-[var(--ink-muted)]">
                   {g.picklist?.picklist_no} · {g.picklist?.delivery_date}
                   {g.security_out_by_name
@@ -74,11 +79,7 @@ export default async function GatePassesPage() {
           </Card>
         ))}
         {rows.length === 0 ? (
-          <Card>
-            <p className="text-sm text-[var(--ink-muted)]">
-              No gate passes yet. Issue one from a picklist after picking.
-            </p>
-          </Card>
+          <EmptyState>No gate passes yet. Issue one from a picklist after picking.</EmptyState>
         ) : null}
       </div>
     </div>

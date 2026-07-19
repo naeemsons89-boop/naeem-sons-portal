@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type Sku = { id: string; product_code: string; description: string };
@@ -120,7 +120,7 @@ export function FocClient({
           <div>
             <Label>Customer (optional)</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -135,7 +135,7 @@ export function FocClient({
           <div>
             <Label>Reason</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value)}
             >
@@ -173,7 +173,7 @@ export function FocClient({
           <div>
             <Label>Pickable batch (FEFO)</Label>
             <select
-              className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={batchId}
               onChange={(e) => setBatchId(e.target.value)}
             >
@@ -215,24 +215,30 @@ export function FocClient({
 
       <Card>
         <h2 className="mb-2 font-semibold">Recent FOC</h2>
-        {rows.map((r) => (
-          <div key={r.id as string} className="flex justify-between text-sm">
-            <span>
-              {String(r.foc_no)} · {String(r.status)}
-            </span>
-            <a
-              className="font-semibold text-[var(--brand)]"
-              href={`/app/print/foc/${r.id}`}
-              target="_blank"
-              rel="noreferrer"
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div
+              key={r.id as string}
+              className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
             >
-              Print
-            </a>
-          </div>
-        ))}
-        {rows.length === 0 ? (
-          <p className="text-sm text-[var(--ink-muted)]">No FOC yet.</p>
-        ) : null}
+              <span className="flex items-center gap-2 font-medium">
+                {String(r.foc_no)}
+                <Badge tone={statusTone(String(r.status))} className="capitalize">
+                  {String(r.status)}
+                </Badge>
+              </span>
+              <a
+                className="font-semibold text-[var(--brand)]"
+                href={`/app/print/foc/${r.id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Print
+              </a>
+            </div>
+          ))}
+        </div>
+        {rows.length === 0 ? <EmptyState>No FOC yet.</EmptyState> : null}
       </Card>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}

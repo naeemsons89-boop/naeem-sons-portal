@@ -156,7 +156,7 @@ export function ScanField({
     <div className="space-y-2">
       <div className="flex gap-2">
         <input
-          className="w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none ring-[var(--brand)] focus:ring-2"
+          className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm outline-none ring-[var(--brand)] focus:ring-2"
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
