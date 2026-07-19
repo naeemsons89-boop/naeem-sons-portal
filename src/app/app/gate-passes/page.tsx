@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { Badge, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchPicklist } from "@/lib/picklist-server";
@@ -37,8 +38,11 @@ export default async function GatePassesPage() {
     <div>
       <PageHeader
         title="Gate passes"
-        description="Each picklist gets one unique outward gate pass after manager approval."
+        description="Each picklist gets one unique outward gate pass (GP000001…)."
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="gate_pass" variant="page" />
+      </div>
       <div className="space-y-3">
         {rows.map((g) => (
           <Card key={g.id}>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { FocClient } from "@/components/foc-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -42,8 +43,11 @@ export default async function FocPage() {
     <div>
       <PageHeader
         title="FOC / Sampling"
-        description="Issues free goods from finance-posted pickable stock only."
+        description="Issues free goods from pickable stock. Fixed auto numbers: FOC000001…"
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="foc" variant="page" />
+      </div>
       <FocClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchGrn } from "@/lib/grn-server";
@@ -36,13 +37,16 @@ export default async function GrnListPage() {
     <div>
       <PageHeader
         title="GRN Inward"
-        description="Physical receive first. Finance unlock makes stock pickable."
+        description="Physical receive first. Finance unlock makes stock pickable. Fixed auto numbers: GRN000001…"
         actions={
           <Link href="/app/grn/new">
             <Button>New GRN</Button>
           </Link>
         }
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="grn" variant="page" />
+      </div>
 
       <div className="space-y-3">
         {grns.map((g) => {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { ReturnsClient } from "@/components/returns-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -40,8 +41,11 @@ export default async function ReturnsPage() {
     <div>
       <PageHeader
         title="Returns"
-        description="Customer returns by condition. Unknown batch needs manager approval."
+        description="Customer returns by condition. Fixed auto numbers: RET000001…"
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="return" variant="page" />
+      </div>
       <ReturnsClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}

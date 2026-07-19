@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { ExchangeClient } from "@/components/exchange-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -37,8 +38,11 @@ export default async function ExchangesPage() {
     <div>
       <PageHeader
         title="Exchange"
-        description="OUT uses pickable stock. IN returns to warehouse by condition."
+        description="OUT uses pickable stock. IN returns by condition. Fixed auto numbers: EX000001…"
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="exchange" variant="page" />
+      </div>
       <ExchangeClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}

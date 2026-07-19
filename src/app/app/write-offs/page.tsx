@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { DocumentSearch } from "@/components/document-search";
 import { WriteOffClient } from "@/components/write-off-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -51,8 +52,11 @@ export default async function WriteOffsPage() {
     <div>
       <PageHeader
         title="Write-off / Destroy"
-        description="Remove expired or damaged stock from warehouse with audit trail."
+        description="Remove expired or damaged stock with audit trail. Fixed auto numbers: WO000001…"
       />
+      <div className="mb-4 max-w-xl">
+        <DocumentSearch scope="write_off" variant="page" />
+      </div>
       <WriteOffClient
         reasons={(reasons ?? []) as { code: string; label: string }[]}
         stock={stock}

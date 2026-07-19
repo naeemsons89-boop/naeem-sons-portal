@@ -21,7 +21,6 @@ import {
   PackagePlus,
   RefreshCw,
   ScanBarcode,
-  Search,
   Settings,
   SlidersHorizontal,
   Trash2,
@@ -34,6 +33,7 @@ import {
 } from "lucide-react";
 
 import { Avatar, Badge } from "@/components/ui";
+import { DocumentSearch } from "@/components/document-search";
 import { can } from "@/lib/permissions";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/client";
@@ -466,6 +466,9 @@ export function AppShell({
           </div>
 
           <div className="mt-4 flex min-h-0 flex-1 flex-col">
+            <div className="mb-3 px-1">
+              <DocumentSearch pathname={pathname} variant="page" className="w-full" />
+            </div>
             <SidebarNav
               pathname={pathname}
               role={role}
@@ -520,16 +523,11 @@ export function AppShell({
         </header>
 
         {/* Desktop topbar */}
-        <header className="hidden items-center gap-4 px-2 pb-4 pt-1 lg:flex">
-          <div className="relative max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-muted)]" />
-            <input
-              type="search"
-              placeholder="Search task"
-              className="w-full rounded-full border border-[var(--line)] bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-[var(--brand)] placeholder:text-[var(--ink-muted)] focus:ring-2"
-            />
+        <header className="hidden w-full items-center gap-4 px-2 pb-4 pt-1 lg:flex">
+          <div className="relative w-full max-w-md shrink">
+            <DocumentSearch pathname={pathname} className="w-full" />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
               type="button"
               className="rounded-full border border-[var(--line)] bg-white p-2.5 text-[var(--ink-muted)] hover:text-[var(--ink)]"
@@ -545,41 +543,41 @@ export function AppShell({
               <Bell className="h-4 w-4" />
               <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             </button>
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setProfileOpen((v) => !v)}
-              className="flex items-center gap-2.5 rounded-full border border-[var(--line)] bg-white py-1.5 pl-1.5 pr-3.5 hover:bg-[var(--surface-2)]"
-            >
-              <Avatar src={profile.avatar_url} name={displayName} size="sm" />
-              <span className="text-left">
-                <span className="block text-sm font-semibold leading-tight text-[var(--ink)]">
-                  {displayName}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProfileOpen((v) => !v)}
+                className="flex items-center gap-2.5 rounded-full border border-[var(--line)] bg-white py-1.5 pl-1.5 pr-3.5 hover:bg-[var(--surface-2)]"
+              >
+                <Avatar src={profile.avatar_url} name={displayName} size="sm" />
+                <span className="text-left">
+                  <span className="block text-sm font-semibold leading-tight text-[var(--ink)]">
+                    {displayName}
+                  </span>
+                  <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">
+                    {profile.email}
+                  </span>
                 </span>
-                <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">
-                  {profile.email}
-                </span>
-              </span>
-            </button>
-            {profileOpen ? (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-48 overflow-hidden rounded-xl border border-[var(--line)] bg-white py-1 shadow-[var(--shadow-card)]">
-                <Link
-                  href="/app/profile"
-                  onClick={() => setProfileOpen(false)}
-                  className="block px-4 py-2 text-sm font-medium text-[var(--ink)] hover:bg-[var(--surface-2)]"
-                >
-                  View profile
-                </Link>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="block w-full px-4 py-2 text-left text-sm font-medium text-[var(--danger)] hover:bg-[var(--surface-2)]"
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : null}
+              </button>
+              {profileOpen ? (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-48 overflow-hidden rounded-xl border border-[var(--line)] bg-white py-1 shadow-[var(--shadow-card)]">
+                  <Link
+                    href="/app/profile"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2 text-sm font-medium text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                  >
+                    View profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className="block w-full px-4 py-2 text-left text-sm font-medium text-[var(--danger)] hover:bg-[var(--surface-2)]"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
