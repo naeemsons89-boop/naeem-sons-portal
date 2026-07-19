@@ -34,9 +34,11 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
+    path.startsWith("/forgot-password") ||
+    path.startsWith("/reset-password") ||
     path.startsWith("/auth");
   const isPublic =
-    isAuthRoute || path === "/" || path.startsWith("/pending");
+    isAuthRoute || path === "/" || path.startsWith("/pending") || path.startsWith("/offline");
 
   if (!user && !isPublic && path.startsWith("/app")) {
     const url = request.nextUrl.clone();
@@ -45,7 +47,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (path === "/login" || path === "/signup")) {
+  // Recovery email lands on /reset-password with a session — do not bounce to /app
+  if (
+    user &&
+    (path === "/login" || path === "/signup" || path === "/forgot-password")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/app";
     return NextResponse.redirect(url);

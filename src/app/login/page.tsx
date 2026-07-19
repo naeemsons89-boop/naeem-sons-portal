@@ -87,6 +87,9 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <p className="mt-1.5 text-right text-sm">
+            <TextLink href="/forgot-password">Forgot password?</TextLink>
+          </p>
         </div>
         {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
         <Button type="submit" className="w-full" disabled={loading}>

@@ -220,6 +220,13 @@ export function ProfileClient({ profile }: { profile: Profile }) {
             <Button type="submit" variant="secondary" disabled={savingPassword}>
               {savingPassword ? "Updating…" : "Update password"}
             </Button>
+            <p className="text-xs text-[var(--ink-muted)]">
+              Locked out later? Use{" "}
+              <a href="/forgot-password" className="font-semibold text-[var(--brand)]">
+                Forgot password
+              </a>{" "}
+              on the login screen.
+            </p>
           </form>
         </Card>
       </div>
