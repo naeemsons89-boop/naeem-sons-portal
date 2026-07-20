@@ -41,6 +41,7 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
   const financeDone = grn.finance_status === "posted";
   const supplier = grn.supplier as { name?: string } | null;
   const warehouse = grn.warehouse as { code?: string; name?: string } | null;
+  const po = grn.po as { id?: string; po_no?: string; status?: string } | null;
 
   const lineTotal = useMemo(() => {
     return lines.reduce((sum, line) => {
@@ -104,6 +105,13 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
   return (
     <div className="space-y-4">
       <Card className="grid gap-2 sm:grid-cols-2">
+        <p className="text-sm">
+          <span className="text-[var(--ink-muted)]">PO:</span>{" "}
+          <strong>{po?.po_no ?? "—"}</strong>
+          {po?.status ? (
+            <span className="ml-2 text-xs text-[var(--ink-muted)]">({po.status})</span>
+          ) : null}
+        </p>
         <p className="text-sm">
           <span className="text-[var(--ink-muted)]">Supplier:</span>{" "}
           <strong>{supplier?.name ?? "—"}</strong>
@@ -206,10 +214,10 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
 
       {!physicalDone && canPhysical ? (
         <Card>
-          <h2 className="font-semibold">1. Post physical receive</h2>
+          <h2 className="font-semibold">1. QC &amp; receive</h2>
           <p className="mt-1 text-sm text-[var(--ink-muted)]">
-            Creates batches and puts stock in warehouse as{" "}
-            <strong>finance pending</strong> (not pickable yet).
+            Confirm shortage/damage QC, then receive into warehouse as{" "}
+            <strong>finance pending</strong> (not pickable yet). This locks the linked PO.
           </p>
           <Button
             className="mt-3"
@@ -217,7 +225,7 @@ export function GrnDetailClient({ grn, lines, canPhysical, canFinance }: Props) 
             disabled={loading}
             onClick={() => void postPhysical()}
           >
-            {loading ? "Posting…" : "Confirm physical receive"}
+            {loading ? "Posting…" : "QC & Receive"}
           </Button>
         </Card>
       ) : null}

@@ -4,6 +4,7 @@ import { getSessionProfile } from "@/lib/auth";
 import { addDays, type GrnLineInput } from "@/lib/grn";
 import { canTouchGrn, insertGrnLines } from "@/lib/grn-server";
 import { can } from "@/lib/permissions";
+import { applyPoReceive } from "@/lib/po-server";
 import { adjustStock } from "@/lib/stock";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import type { AppRole } from "@/types/database";
@@ -24,7 +25,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const { data: grn, error } = await admin
     .from("grns")
     .select(
-      "*, supplier:suppliers(id,code,name), warehouse:warehouses(id,code,name)",
+      "*, supplier:suppliers(id,code,name), warehouse:warehouses(id,code,name), po:purchase_orders(id,po_no,status)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -150,6 +151,33 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     try {
+      if (grn.po_id) {
+        const { data: poLines, error: poLineErr } = await admin
+          .from("purchase_order_lines")
+          .select("id, qty_ordered_units, qty_received_units")
+          .eq("po_id", grn.po_id);
+        if (poLineErr) throw new Error(poLineErr.message);
+        const remMap = new Map(
+          (poLines ?? []).map((l) => [
+            l.id,
+            Math.max(0, Number(l.qty_ordered_units) - Number(l.qty_received_units)),
+          ]),
+        );
+        for (const line of lines) {
+          if (!line.po_line_id) continue;
+          const need =
+            Number(line.qty_units) - Number(line.shortage_units ?? 0);
+          if (need <= 0) continue;
+          const rem = remMap.get(line.po_line_id) ?? 0;
+          if (need > rem + 1e-9) {
+            throw new Error(
+              `Line ${line.line_no}: exceeds PO remaining (${need} > ${rem})`,
+            );
+          }
+          remMap.set(line.po_line_id, rem - need);
+        }
+      }
+
       for (const line of lines) {
         if (!line.batch_code) throw new Error(`Line ${line.line_no}: missing batch`);
 
@@ -259,6 +287,29 @@ export async function POST(request: Request, ctx: Ctx) {
           physical_posted_by: userId,
         })
         .eq("id", id);
+
+      if (grn.po_id) {
+        const increments = lines
+          .filter((line) => line.po_line_id)
+          .map((line) => {
+            const goodQty =
+              Number(line.qty_units) -
+              Number(line.shortage_units ?? 0) -
+              Number(line.damage_units ?? 0);
+            // Count good + damaged as received against PO; shortage does not
+            const receivedAgainstPo =
+              Number(line.qty_units) - Number(line.shortage_units ?? 0);
+            return {
+              po_line_id: line.po_line_id as string,
+              qty_units: Math.max(0, receivedAgainstPo),
+              _good: goodQty,
+            };
+          })
+          .filter((i) => i.qty_units > 0)
+          .map(({ po_line_id, qty_units }) => ({ po_line_id, qty_units }));
+
+        await applyPoReceive(admin, grn.po_id, increments);
+      }
     } catch (e) {
       return NextResponse.json(
         { error: e instanceof Error ? e.message : "Physical post failed" },
@@ -269,7 +320,7 @@ export async function POST(request: Request, ctx: Ctx) {
     return NextResponse.json({
       ok: true,
       message:
-        "Physical receive posted. Stock is in warehouse but NOT pickable until finance is posted.",
+        "QC & receive posted. Stock is in warehouse but NOT pickable until finance is posted.",
     });
   }
 

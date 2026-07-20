@@ -21,7 +21,7 @@ export default async function GrnDetailPage({ params }: Props) {
   const { data: grn } = await admin
     .from("grns")
     .select(
-      "*, supplier:suppliers(id,code,name), warehouse:warehouses(id,code,name)",
+      "*, supplier:suppliers(id,code,name), warehouse:warehouses(id,code,name), po:purchase_orders(id,po_no,status)",
     )
     .eq("id", id)
     .maybeSingle();

@@ -3,6 +3,7 @@ import { casesToUnits } from "@/lib/utils";
 export type GrnHeader = {
   id: string;
   grn_no: string;
+  po_id: string | null;
   supplier_id: string | null;
   warehouse_id: string;
   supplier_delivery_no: string | null;
@@ -27,6 +28,7 @@ export type GrnLine = {
   grn_id: string;
   line_no: number;
   sku_id: string;
+  po_line_id: string | null;
   batch_id: string | null;
   batch_code: string | null;
   mfg_date: string | null;
@@ -53,6 +55,7 @@ export type GrnLine = {
 
 export type GrnLineInput = {
   sku_id: string;
+  po_line_id?: string | null;
   batch_code: string;
   mfg_date?: string | null;
   expiry_date?: string | null;

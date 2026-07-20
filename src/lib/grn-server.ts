@@ -57,6 +57,7 @@ export async function insertGrnLines(
       grn_id: grnId,
       line_no: idx + 1,
       sku_id: line.sku_id,
+      po_line_id: line.po_line_id || null,
       batch_code: line.batch_code.trim(),
       mfg_date: line.mfg_date || null,
       expiry_date: expiry,

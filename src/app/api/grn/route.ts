@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
 import type { GrnLineInput } from "@/lib/grn";
+import { lineUnits } from "@/lib/grn";
 import { canTouchGrn, insertGrnLines } from "@/lib/grn-server";
+import { remainingUnits } from "@/lib/po";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import type { AppRole } from "@/types/database";
@@ -20,7 +22,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("grns")
     .select(
-      "id,grn_no,supplier_delivery_no,delivery_date,status,finance_status,physical_posted_at,finance_posted_at,truck_no,created_at,supplier:suppliers(name)",
+      "id,grn_no,po_id,supplier_delivery_no,delivery_date,status,finance_status,physical_posted_at,finance_posted_at,truck_no,created_at,supplier:suppliers(name),po:purchase_orders(po_no)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
@@ -29,7 +31,7 @@ export async function GET() {
   return NextResponse.json({ grns: data });
 }
 
-/** Create draft GRN with lines */
+/** Create draft GRN from a PO */
 export async function POST(request: Request) {
   const { userId, profile } = await getSessionProfile();
   if (!userId || !canTouchGrn(profile?.role as AppRole)) {
@@ -37,8 +39,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as {
-    supplier_id?: string | null;
-    warehouse_id?: string;
+    po_id?: string;
     supplier_delivery_no?: string;
     delivery_date?: string;
     truck_no?: string;
@@ -47,23 +48,83 @@ export async function POST(request: Request) {
     lines: GrnLineInput[];
   };
 
+  if (!body.po_id) {
+    return NextResponse.json({ error: "PO is required to create a GRN" }, { status: 400 });
+  }
   if (!body.lines?.length) {
     return NextResponse.json({ error: "Add at least one line" }, { status: 400 });
   }
 
   const admin = createServiceClient();
 
-  let warehouseId = body.warehouse_id;
-  if (!warehouseId) {
-    const { data: wh } = await admin
-      .from("warehouses")
-      .select("id")
-      .eq("code", "MAIN_WHS")
-      .maybeSingle();
-    warehouseId = wh?.id;
+  const { data: po, error: poError } = await admin
+    .from("purchase_orders")
+    .select(
+      "id,supplier_id,warehouse_id,status,lines:purchase_order_lines(id,sku_id,qty_ordered_units,qty_received_units,unit_price)",
+    )
+    .eq("id", body.po_id)
+    .maybeSingle();
+
+  if (poError) return NextResponse.json({ error: poError.message }, { status: 400 });
+  if (!po) return NextResponse.json({ error: "PO not found" }, { status: 404 });
+  if (!["pending", "partial"].includes(po.status)) {
+    return NextResponse.json(
+      { error: `Cannot receive against PO in status ${po.status}` },
+      { status: 400 },
+    );
   }
-  if (!warehouseId) {
-    return NextResponse.json({ error: "MAIN_WHS not found" }, { status: 400 });
+
+  const poLines = (po.lines as {
+    id: string;
+    sku_id: string;
+    qty_ordered_units: number;
+    qty_received_units: number;
+    unit_price: number;
+  }[]) ?? [];
+  const poLineMap = new Map(poLines.map((l) => [l.id, l]));
+
+  const skuIds = [...new Set(body.lines.map((l) => l.sku_id))];
+  const { data: skus } = await admin
+    .from("skus")
+    .select("id,packs_per_carton")
+    .in("id", skuIds);
+  const skuMap = new Map((skus ?? []).map((s) => [s.id, s]));
+
+  try {
+    for (const [idx, line] of body.lines.entries()) {
+      if (!line.po_line_id) {
+        throw new Error(`Line ${idx + 1}: po_line_id required`);
+      }
+      const poLine = poLineMap.get(line.po_line_id);
+      if (!poLine) throw new Error(`Line ${idx + 1}: invalid PO line`);
+      if (poLine.sku_id !== line.sku_id) {
+        throw new Error(`Line ${idx + 1}: SKU does not match PO line`);
+      }
+
+      const sku = skuMap.get(line.sku_id);
+      const ppc = sku?.packs_per_carton || 1;
+      const qty = lineUnits({
+        qty_cases: line.qty_cases,
+        qty_units: line.qty_units,
+        packs_per_carton: ppc,
+      });
+      const rem = remainingUnits(poLine);
+      if (qty > rem + 1e-9) {
+        throw new Error(
+          `Line ${idx + 1}: qty ${qty} exceeds remaining ${rem} on PO`,
+        );
+      }
+
+      // Default purchase price from PO if not provided
+      if (line.purchase_price_pack == null) {
+        line.purchase_price_pack = Number(poLine.unit_price);
+      }
+    }
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid lines" },
+      { status: 400 },
+    );
   }
 
   let grnNo: string | null = null;
@@ -77,8 +138,9 @@ export async function POST(request: Request) {
     .from("grns")
     .insert({
       grn_no: grnNo,
-      supplier_id: body.supplier_id || null,
-      warehouse_id: warehouseId,
+      po_id: po.id,
+      supplier_id: po.supplier_id,
+      warehouse_id: po.warehouse_id,
       supplier_delivery_no: body.supplier_delivery_no || null,
       delivery_date:
         body.delivery_date ||

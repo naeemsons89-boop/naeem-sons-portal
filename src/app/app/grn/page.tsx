@@ -16,7 +16,7 @@ export default async function GrnListPage() {
   const { data: grnsRaw } = await supabase
     .from("grns")
     .select(
-      "id,grn_no,supplier_delivery_no,delivery_date,status,finance_status,physical_posted_at,truck_no,supplier:suppliers(name)",
+      "id,grn_no,supplier_delivery_no,delivery_date,status,finance_status,physical_posted_at,truck_no,supplier:suppliers(name),po:purchase_orders(po_no)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
@@ -31,13 +31,14 @@ export default async function GrnListPage() {
     physical_posted_at: string | null;
     truck_no: string | null;
     supplier: { name?: string } | null;
+    po: { po_no?: string } | null;
   }>;
 
   return (
     <div>
       <PageHeader
         title="GRN Inward"
-        description="Physical receive first. Finance unlock makes stock pickable. Fixed auto numbers: GRN000001…"
+        description="Receive against a purchase order. QC then physical receive moves stock to warehouse."
         actions={
           <Link href="/app/grn/new">
             <Button>New GRN</Button>
@@ -58,6 +59,7 @@ export default async function GrnListPage() {
                   <div>
                     <p className="font-semibold">{g.grn_no}</p>
                     <p className="text-sm text-[var(--ink-muted)]">
+                      {g.po?.po_no ? `${g.po.po_no} · ` : ""}
                       {supplier?.name ?? "Supplier"} · DN{" "}
                       {g.supplier_delivery_no || "—"} · {g.delivery_date}
                     </p>
@@ -76,7 +78,7 @@ export default async function GrnListPage() {
           );
         })}
         {grns.length === 0 ? (
-          <EmptyState>No GRNs yet. Create one from a supplier delivery note.</EmptyState>
+          <EmptyState>No GRNs yet. Create one from an open purchase order.</EmptyState>
         ) : null}
       </div>
     </div>

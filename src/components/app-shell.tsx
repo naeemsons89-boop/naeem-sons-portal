@@ -11,6 +11,7 @@ import {
   Boxes,
   ChevronDown,
   ClipboardList,
+  FileText,
   Gift,
   Hammer,
   LayoutDashboard,
@@ -55,6 +56,7 @@ const topMenu: NavItem[] = [
 
 const warehouseChildren: NavItem[] = [
   { href: "/app/scan", label: "Scan", icon: ScanBarcode },
+  { href: "/app/po", label: "Purchase Orders", icon: FileText },
   { href: "/app/grn", label: "GRN Inward", icon: PackagePlus },
   { href: "/app/picklists", label: "Picklists", icon: ClipboardList },
   { href: "/app/gate-passes", label: "Gate Passes", icon: Truck },

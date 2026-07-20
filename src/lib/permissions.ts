@@ -21,6 +21,8 @@ export const permissions = {
   approveUsers: ["admin"] as AppRole[],
   manageMasters: ["admin", "warehouse_manager", "sales_office"] as AppRole[],
   manageWarehouseStructure: ["admin", "warehouse_manager"] as AppRole[],
+  createPo: ["admin", "warehouse_manager", "sales_office"] as AppRole[],
+  editPo: ["admin", "warehouse_manager", "sales_office"] as AppRole[],
   physicalReceive: [
     "admin",
     "warehouse_manager",
