@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getSessionProfile } from "@/lib/auth";
 import { listPickableBatches } from "@/lib/fefo";
 import { can } from "@/lib/permissions";
 import { canTouchPicklist, nextDocNo } from "@/lib/picklist-server";
+import { postSalesForGatePass } from "@/lib/sale-ledger";
 import { adjustStock } from "@/lib/stock";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import type { AppRole } from "@/types/database";
@@ -11,6 +13,57 @@ import type { AppRole } from "@/types/database";
 export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+/** Undo stock/GP/picklist writes when sale ledger posting fails after issue. */
+async function compensateIssuedGatePass(
+  admin: SupabaseClient,
+  opts: {
+    picklistId: string;
+    gatePassId: string;
+    warehouseId: string;
+  },
+) {
+  await admin
+    .from("customer_ledger_entries")
+    .delete()
+    .eq("gate_pass_id", opts.gatePassId);
+
+  const { data: gpLines } = await admin
+    .from("gate_pass_lines")
+    .select("sku_id,batch_id,qty_units")
+    .eq("gate_pass_id", opts.gatePassId);
+
+  for (const line of gpLines ?? []) {
+    const qty = Number(line.qty_units || 0);
+    if (qty <= 0 || !line.batch_id) continue;
+    await adjustStock(admin, {
+      warehouse_id: opts.warehouseId,
+      sku_id: line.sku_id as string,
+      batch_id: line.batch_id as string,
+      condition: "good",
+      finance_status: "posted",
+      qty_delta: qty,
+    });
+  }
+
+  await admin
+    .from("stock_movements")
+    .delete()
+    .eq("document_type", "gate_pass")
+    .eq("document_id", opts.gatePassId);
+
+  await admin.from("gate_pass_lines").delete().eq("gate_pass_id", opts.gatePassId);
+  await admin.from("gate_passes").delete().eq("id", opts.gatePassId);
+
+  await admin
+    .from("picklists")
+    .update({
+      status: "submitted",
+      load_out_at: null,
+      load_out_by: null,
+    })
+    .eq("id", opts.picklistId);
+}
 
 export async function GET(_req: Request, ctx: Ctx) {
   const { profile } = await getSessionProfile();
@@ -351,6 +404,35 @@ export async function POST(request: Request, ctx: Ctx) {
           load_out_by: userId,
         })
         .eq("id", id);
+
+      try {
+        await postSalesForGatePass(admin, {
+          picklistId: id,
+          gatePassId: gp.id as string,
+          userId,
+        });
+      } catch (ledgerError) {
+        try {
+          await compensateIssuedGatePass(admin, {
+            picklistId: id,
+            gatePassId: gp.id as string,
+            warehouseId: picklist.warehouse_id as string,
+          });
+        } catch (compensateError) {
+          const ledgerMsg =
+            ledgerError instanceof Error ? ledgerError.message : "Ledger post failed";
+          const compensateMsg =
+            compensateError instanceof Error
+              ? compensateError.message
+              : "Compensate failed";
+          throw new Error(
+            `${ledgerMsg}. Stock/gate pass rollback also failed: ${compensateMsg}`,
+          );
+        }
+        throw ledgerError instanceof Error
+          ? ledgerError
+          : new Error("Sale ledger post failed; gate pass rolled back");
+      }
 
       return NextResponse.json({
         ok: true,

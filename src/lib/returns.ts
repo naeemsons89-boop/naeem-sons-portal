@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { postReturnCredit } from "@/lib/sale-ledger";
 import { adjustStock } from "@/lib/stock";
 
 export async function postReturn(
@@ -62,4 +63,12 @@ export async function postReturn(
       requires_unknown_batch_approval: false,
     })
     .eq("id", returnId);
+
+  await postReturnCredit(admin, {
+    returnId,
+    customerId: receipt.customer_id as string,
+    invoiceNo: (receipt.invoice_no as string | null) ?? null,
+    picklistId: (receipt.picklist_id as string | null) ?? null,
+    userId,
+  });
 }

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
 import { suggestFefoBatch } from "@/lib/fefo";
+import { nextCode, nextDocNo } from "@/lib/ops";
 import { can } from "@/lib/permissions";
-import { canTouchPicklist, nextDocNo } from "@/lib/picklist-server";
+import { canTouchPicklist } from "@/lib/picklist-server";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/database";
@@ -77,12 +78,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "MAIN_WHS missing" }, { status: 400 });
   }
 
-  async function upsertRoute(code?: string, type: "psr" | "da" | "mixed" = "mixed") {
-    if (!code?.trim()) return null;
-    const c = code.trim();
+  async function resolveRoute(nameOrCode?: string, type: "psr" | "da" | "mixed" = "mixed") {
+    if (!nameOrCode?.trim()) return null;
+    const raw = nameOrCode.trim();
+    const { data: byCode } = await admin
+      .from("routes")
+      .select("id")
+      .eq("code", raw)
+      .maybeSingle();
+    if (byCode?.id) return byCode.id as string;
+    const { data: byName } = await admin
+      .from("routes")
+      .select("id")
+      .eq("name", raw)
+      .maybeSingle();
+    if (byName?.id) return byName.id as string;
+
+    const code = await nextCode(admin, "route");
     const { data, error } = await admin
       .from("routes")
-      .upsert({ code: c, name: c, route_type: type }, { onConflict: "code" })
+      .insert({ code, name: raw, route_type: type, is_active: true })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -90,8 +105,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const psrId = await upsertRoute(body.psr_route_code, "psr");
-    const daId = await upsertRoute(body.da_route_code, "da");
+    const psrId = await resolveRoute(body.psr_route_code, "psr");
+    const daId = await resolveRoute(body.da_route_code, "da");
     const picklistNo = await nextDocNo(admin, "picklist", "PL");
 
     const { data: picklist, error: plError } = await admin
@@ -115,20 +130,18 @@ export async function POST(request: Request) {
       let customerId = c.customer_id;
 
       if (!customerId) {
-        if (!c.customer_code?.trim() || !c.customer_name?.trim()) {
-          throw new Error(`Customer ${i + 1}: code and name required`);
+        if (!c.customer_name?.trim()) {
+          throw new Error(`Customer ${i + 1}: name required`);
         }
+        const code = await nextCode(admin, "customer");
         const { data: cust, error: custError } = await admin
           .from("customers")
-          .upsert(
-            {
-              code: c.customer_code.trim(),
-              name: c.customer_name.trim(),
-              route_id: daId || psrId,
-              is_active: true,
-            },
-            { onConflict: "code" },
-          )
+          .insert({
+            code,
+            name: c.customer_name.trim(),
+            route_id: daId || psrId,
+            is_active: true,
+          })
           .select("id")
           .single();
         if (custError || !cust) throw new Error(custError?.message ?? "Customer failed");

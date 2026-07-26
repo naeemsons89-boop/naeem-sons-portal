@@ -36,11 +36,8 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [whCode, setWhCode] = useState("");
   const [whName, setWhName] = useState("");
   const [whAddress, setWhAddress] = useState("");
-  const [rackCode, setRackCode] = useState("");
-  const [binCode, setBinCode] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/warehouse");
@@ -129,9 +126,8 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
         </div>
         {canManage ? (
           <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <Label>Code</Label>
-              <Input value={whCode} onChange={(e) => setWhCode(e.target.value)} placeholder="WH2" />
+            <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--ink-muted)]">
+              Code auto-generated (WH000001…).
             </div>
             <div>
               <Label>Name</Label>
@@ -142,11 +138,11 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
               <Input value={whAddress} onChange={(e) => setWhAddress(e.target.value)} />
             </div>
             <Button
-              disabled={busy}
+              disabled={busy || !whName.trim()}
               onClick={() =>
                 void post({
                   action: "create_warehouse",
-                  warehouse: { code: whCode, name: whName, address: whAddress },
+                  warehouse: { name: whName, address: whAddress },
                 })
               }
             >
@@ -180,18 +176,14 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
           ) : null}
         </div>
         {canManage && selectedWh ? (
-          <div className="flex gap-2">
-            <Input
-              value={rackCode}
-              onChange={(e) => setRackCode(e.target.value)}
-              placeholder="Rack code e.g. R01"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-[var(--ink-muted)]">Rack code auto-generated (RK000001…).</p>
             <Button
               disabled={busy}
               onClick={() =>
                 void post({
                   action: "create_rack",
-                  rack: { warehouse_id: selectedWh, code: rackCode },
+                  rack: { warehouse_id: selectedWh },
                 })
               }
             >
@@ -216,18 +208,14 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
           ) : null}
         </ul>
         {canManage && selectedRack ? (
-          <div className="flex gap-2">
-            <Input
-              value={binCode}
-              onChange={(e) => setBinCode(e.target.value)}
-              placeholder="Bin code e.g. B01"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-[var(--ink-muted)]">Bin code auto-generated (BN000001…).</p>
             <Button
               disabled={busy}
               onClick={() =>
                 void post({
                   action: "create_bin",
-                  bin: { rack_id: selectedRack, code: binCode },
+                  bin: { rack_id: selectedRack },
                 })
               }
             >

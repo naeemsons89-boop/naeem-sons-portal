@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
+import { nextCode } from "@/lib/ops";
 import { can } from "@/lib/permissions";
+import { syncOpeningLedger } from "@/lib/sale-ledger";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/database";
@@ -22,16 +24,6 @@ function entityFromUrl(url: URL): Entity | null {
     return e;
   }
   return null;
-}
-
-async function nextCode(
-  admin: ReturnType<typeof createServiceClient>,
-  docType: "supplier" | "customer",
-) {
-  const { data: seq, error } = await admin.rpc("next_doc_no", { p_doc_type: docType });
-  if (!error && seq) return seq as string;
-  const prefix = docType === "supplier" ? "SUP" : "CUS";
-  return `${prefix}${Date.now().toString().slice(-6)}`;
 }
 
 export async function GET(request: Request) {
@@ -157,12 +149,17 @@ export async function POST(request: Request) {
         const sku_id = String(body.data?.sku_id ?? body.sku_id ?? "").trim();
         if (!supplier_id || !sku_id) throw new Error("supplier_id and sku_id required");
 
+        let supplier_sku_code = body.data?.supplier_sku_code
+          ? String(body.data.supplier_sku_code).trim()
+          : "";
+        if (!supplier_sku_code) {
+          supplier_sku_code = await nextCode(admin, "vendor_sku");
+        }
+
         const row = {
           supplier_id,
           sku_id,
-          supplier_sku_code: body.data?.supplier_sku_code
-            ? String(body.data.supplier_sku_code).trim()
-            : null,
+          supplier_sku_code,
           default_purchase_price:
             body.data?.default_purchase_price !== "" &&
             body.data?.default_purchase_price != null
@@ -203,6 +200,14 @@ export async function POST(request: Request) {
       >;
       const { data, error } = await admin.from(table).insert(row).select("*").single();
       if (error) throw new Error(friendlyDbError(error.message, body.entity));
+      if (body.entity === "customers" && data?.id) {
+        await syncOpeningLedger(
+          admin,
+          data.id as string,
+          Number(data.opening_balance ?? 0),
+          profile?.id,
+        );
+      }
       return NextResponse.json({ row: data });
     }
 
@@ -218,6 +223,14 @@ export async function POST(request: Request) {
         .select("*")
         .single();
       if (error) throw new Error(friendlyDbError(error.message, body.entity));
+      if (body.entity === "customers" && data?.id && "opening_balance" in row) {
+        await syncOpeningLedger(
+          admin,
+          data.id as string,
+          Number(data.opening_balance ?? 0),
+          profile?.id,
+        );
+      }
       return NextResponse.json({ row: data });
     }
 
@@ -237,11 +250,13 @@ async function sanitize(
   creating: boolean,
 ) {
   if (entity === "skus") {
-    const product_code = String(data.product_code ?? "").trim();
     const description = String(data.description ?? "").trim();
-    if (creating && (!product_code || !description)) {
-      throw new Error("product_code and description required");
+    if (creating && !description) {
+      throw new Error("description required");
     }
+    const product_code = creating
+      ? await nextCode(admin, "sku")
+      : String(data.product_code ?? "").trim();
     return {
       ...(product_code ? { product_code } : {}),
       ...(description ? { description } : {}),

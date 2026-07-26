@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { getSessionProfile } from "@/lib/auth";
 import { nextDocNo } from "@/lib/ops";
 import { can } from "@/lib/permissions";
+import {
+  getCustomerOutstanding,
+  postCollectionPaymentLedger,
+} from "@/lib/sale-ledger";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/database";
@@ -36,8 +40,6 @@ export async function POST(request: Request) {
   const picklistId = String(form.get("picklist_id") ?? "");
   const gatePassId = String(form.get("gate_pass_id") ?? "");
   const customerId = String(form.get("customer_id") ?? "");
-  const invoiceNo = String(form.get("invoice_no") ?? "");
-  const outstanding = Number(form.get("outstanding_balance") ?? 0);
   const remarks = String(form.get("remarks") ?? "");
   const paymentsRaw = String(form.get("payments") ?? "[]");
 
@@ -66,7 +68,6 @@ export async function POST(request: Request) {
 
   const admin = createServiceClient();
 
-  // Validate gate pass belongs to picklist
   const { data: gp } = await admin
     .from("gate_passes")
     .select("id,picklist_id")
@@ -79,6 +80,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: pc } = await admin
+    .from("picklist_customers")
+    .select("id,invoice_no")
+    .eq("picklist_id", picklistId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (!pc) {
+    return NextResponse.json(
+      { error: "Customer must belong to the selected picklist" },
+      { status: 400 },
+    );
+  }
+
+  const invoiceNo = (pc.invoice_no as string | null) || null;
   const collectionNo = await nextDocNo(admin, "cash_collection", "CC");
   const { data: collection, error } = await admin
     .from("cash_collections")
@@ -87,8 +102,8 @@ export async function POST(request: Request) {
       picklist_id: picklistId,
       gate_pass_id: gatePassId,
       customer_id: customerId,
-      invoice_no: invoiceNo || null,
-      outstanding_balance: outstanding,
+      invoice_no: invoiceNo,
+      outstanding_balance: 0,
       collected_by: userId,
       collected_at: new Date().toISOString(),
       remarks: remarks || null,
@@ -107,6 +122,7 @@ export async function POST(request: Request) {
         throw new Error(`Invalid payment method on line ${i + 1}`);
       }
       if (Number(p.amount) < 0) throw new Error("Amount cannot be negative");
+      if (Number(p.amount) <= 0) throw new Error("Amount must be greater than zero");
 
       let proofPath: string | null = null;
       const file = form.get(`proof_${i}`);
@@ -121,7 +137,6 @@ export async function POST(request: Request) {
             upsert: false,
           });
         if (upErr) {
-          // Bucket may not exist yet — keep collection without file, surface warning
           throw new Error(
             `Proof upload failed (${upErr.message}). Run payment-proofs storage migration in Supabase.`,
           );
@@ -129,24 +144,48 @@ export async function POST(request: Request) {
         proofPath = path;
       }
 
-      const { error: payErr } = await admin.from("cash_collection_payments").insert({
-        cash_collection_id: collection.id,
+      const { data: payRow, error: payErr } = await admin
+        .from("cash_collection_payments")
+        .insert({
+          cash_collection_id: collection.id,
+          method: p.method,
+          amount: Number(p.amount),
+          cheque_no: p.cheque_no || null,
+          bank_name: p.bank_name || null,
+          online_ref: p.online_ref || null,
+          proof_path: proofPath,
+          notes: p.notes || null,
+        })
+        .select("id")
+        .single();
+      if (payErr || !payRow) throw new Error(payErr?.message ?? "Payment insert failed");
+
+      await postCollectionPaymentLedger(admin, {
+        customerId,
+        picklistId,
+        gatePassId,
+        invoiceNo,
+        cashCollectionId: collection.id as string,
+        cashCollectionPaymentId: payRow.id as string,
         method: p.method,
         amount: Number(p.amount),
-        cheque_no: p.cheque_no || null,
-        bank_name: p.bank_name || null,
-        online_ref: p.online_ref || null,
-        proof_path: proofPath,
+        userId,
         notes: p.notes || null,
       });
-      if (payErr) throw new Error(payErr.message);
     }
 
+    const outstanding = await getCustomerOutstanding(admin, customerId);
+    await admin
+      .from("cash_collections")
+      .update({ outstanding_balance: outstanding })
+      .eq("id", collection.id);
+
     return NextResponse.json({
-      collection,
+      collection: { ...collection, outstanding_balance: outstanding },
       message: `Collection ${collection.collection_no} saved`,
     });
   } catch (e) {
+    await admin.from("customer_ledger_entries").delete().eq("cash_collection_id", collection.id);
     await admin.from("cash_collections").delete().eq("id", collection.id);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Collection failed" },

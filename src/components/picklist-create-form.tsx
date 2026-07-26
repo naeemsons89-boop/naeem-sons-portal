@@ -179,19 +179,19 @@ export function PicklistCreateForm({
           />
         </div>
         <div>
-          <Label>PSR route</Label>
+          <Label>PSR route name</Label>
           <Input
             value={psrRoute}
             onChange={(e) => setPsrRoute(e.target.value)}
-            placeholder="NES-PSR016"
+            placeholder="Route name (code auto if new)"
           />
         </div>
         <div>
-          <Label>DA route</Label>
+          <Label>DA route name</Label>
           <Input
             value={daRoute}
             onChange={(e) => setDaRoute(e.target.value)}
-            placeholder="NES-DA016"
+            placeholder="Route name (code auto if new)"
           />
         </div>
       </Card>
@@ -253,24 +253,11 @@ export function PicklistCreateForm({
           </div>
 
           {block.mode === "new" ? (
-            <div className="grid gap-2 sm:grid-cols-3">
-              <div>
-                <Label>Customer code</Label>
-                <Input
-                  value={block.customer_code}
-                  onChange={(e) =>
-                    setBlocks((prev) =>
-                      prev.map((b, i) =>
-                        i === bIdx
-                          ? { ...b, customer_code: e.target.value }
-                          : b,
-                      ),
-                    )
-                  }
-                  required
-                />
+            <div className="grid gap-2 sm:grid-cols-1">
+              <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--ink-muted)]">
+                Customer code will be auto-generated (CUS000001…).
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <Label>Customer name</Label>
                 <Input
                   value={block.customer_name}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
+import { nextCode } from "@/lib/ops";
 import { can } from "@/lib/permissions";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import { createClient } from "@/lib/supabase/server";
@@ -44,9 +45,9 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     action: "create_warehouse" | "create_rack" | "create_bin" | "toggle";
-    warehouse?: { code: string; name: string; address?: string };
-    rack?: { warehouse_id: string; code: string; name?: string };
-    bin?: { rack_id: string; code: string; name?: string };
+    warehouse?: { name: string; address?: string };
+    rack?: { warehouse_id: string; name?: string };
+    bin?: { rack_id: string; name?: string };
     toggle?: { table: "warehouses" | "racks" | "bins"; id: string; is_active: boolean };
   };
 
@@ -55,14 +56,15 @@ export async function POST(request: Request) {
   try {
     if (body.action === "create_warehouse") {
       const w = body.warehouse;
-      if (!w?.code?.trim() || !w?.name?.trim()) throw new Error("Code and name required");
+      if (!w?.name?.trim()) throw new Error("Name required");
       const { data: company } = await admin.from("companies").select("id").limit(1).maybeSingle();
       if (!company) throw new Error("Company missing");
+      const code = await nextCode(admin, "warehouse");
       const { data, error } = await admin
         .from("warehouses")
         .insert({
           company_id: company.id,
-          code: w.code.trim().toUpperCase(),
+          code,
           name: w.name.trim(),
           address: w.address || null,
           is_active: true,
@@ -75,13 +77,14 @@ export async function POST(request: Request) {
 
     if (body.action === "create_rack") {
       const r = body.rack;
-      if (!r?.warehouse_id || !r?.code?.trim()) throw new Error("Warehouse and rack code required");
+      if (!r?.warehouse_id) throw new Error("Warehouse required");
+      const code = await nextCode(admin, "rack");
       const { data, error } = await admin
         .from("racks")
         .insert({
           warehouse_id: r.warehouse_id,
-          code: r.code.trim().toUpperCase(),
-          name: r.name?.trim() || r.code.trim().toUpperCase(),
+          code,
+          name: r.name?.trim() || code,
           is_active: true,
         })
         .select("*")
@@ -92,13 +95,14 @@ export async function POST(request: Request) {
 
     if (body.action === "create_bin") {
       const b = body.bin;
-      if (!b?.rack_id || !b?.code?.trim()) throw new Error("Rack and bin code required");
+      if (!b?.rack_id) throw new Error("Rack required");
+      const code = await nextCode(admin, "bin");
       const { data, error } = await admin
         .from("bins")
         .insert({
           rack_id: b.rack_id,
-          code: b.code.trim().toUpperCase(),
-          name: b.name?.trim() || b.code.trim().toUpperCase(),
+          code,
+          name: b.name?.trim() || code,
           is_active: true,
         })
         .select("*")

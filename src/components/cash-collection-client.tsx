@@ -4,12 +4,20 @@ import { useMemo, useState } from "react";
 
 import { Avatar, Badge, Button, Card, EmptyState, Input, Label } from "@/components/ui";
 
-type Customer = { id: string; code: string; name: string };
-type PicklistOpt = { id: string; picklist_no: string; delivery_date: string };
-type GatePassOpt = {
+type PicklistOpt = {
   id: string;
-  gate_pass_no: string;
-  picklist_id: string;
+  picklist_no: string;
+  delivery_date: string;
+  gate_pass: { id: string; gate_pass_no: string };
+  customers: Array<{
+    picklist_customer_id: string;
+    id: string;
+    code: string;
+    name: string;
+    invoice_no: string | null;
+    sale_amount: number;
+    outstanding: number;
+  }>;
 };
 
 type PayRow = {
@@ -36,46 +44,72 @@ function emptyPay(): PayRow {
   };
 }
 
+function money(n: number) {
+  return Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+        {label}
+      </p>
+      <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">{value}</p>
+    </div>
+  );
+}
+
 export function CashCollectionClient({
-  customers,
   picklists,
-  gatePasses,
   initial,
 }: {
-  customers: Customer[];
   picklists: PicklistOpt[];
-  gatePasses: GatePassOpt[];
   initial: Array<Record<string, unknown>>;
 }) {
   const [rows, setRows] = useState(initial);
   const [picklistId, setPicklistId] = useState(picklists[0]?.id ?? "");
-  const [gatePassId, setGatePassId] = useState("");
-  const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [outstanding, setOutstanding] = useState("0");
+  const [customerId, setCustomerId] = useState(picklists[0]?.customers[0]?.id ?? "");
   const [remarks, setRemarks] = useState("");
   const [payments, setPayments] = useState<PayRow[]>([emptyPay()]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const filteredGps = useMemo(
-    () => gatePasses.filter((g) => g.picklist_id === picklistId),
-    [gatePasses, picklistId],
+  const selected = useMemo(
+    () => picklists.find((p) => p.id === picklistId) ?? null,
+    [picklists, picklistId],
   );
+
+  const selectedCustomer = useMemo(() => {
+    if (!selected) return null;
+    return selected.customers.find((c) => c.id === customerId) ?? selected.customers[0] ?? null;
+  }, [selected, customerId]);
+
+  function selectPicklist(id: string) {
+    setPicklistId(id);
+    const pl = picklists.find((p) => p.id === id);
+    setCustomerId(pl?.customers[0]?.id ?? "");
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!selected?.gate_pass || !selectedCustomer) {
+      setError("Selected picklist is missing gate pass or customer");
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setMessage(null);
 
     const form = new FormData();
     form.set("picklist_id", picklistId);
-    form.set("gate_pass_id", gatePassId);
-    form.set("customer_id", customerId);
-    form.set("invoice_no", invoiceNo);
-    form.set("outstanding_balance", outstanding);
+    form.set("gate_pass_id", selected.gate_pass.id);
+    form.set("customer_id", selectedCustomer.id);
+    form.set("invoice_no", selectedCustomer.invoice_no ?? "");
     form.set("remarks", remarks);
     form.set(
       "payments",
@@ -113,74 +147,88 @@ export function CashCollectionClient({
       <Card>
         <form onSubmit={submit} className="space-y-3">
           <h2 className="font-semibold">New collection (linked to gate pass)</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Picklist</Label>
-              <select
-                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
-                value={picklistId}
-                onChange={(e) => {
-                  setPicklistId(e.target.value);
-                  setGatePassId("");
-                }}
-                required
-              >
-                <option value="">Select</option>
-                {picklists.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.picklist_no} · {p.delivery_date}
-                  </option>
-                ))}
-              </select>
+          <div>
+            <Label>Picklist</Label>
+            <select
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              value={picklistId}
+              onChange={(e) => selectPicklist(e.target.value)}
+              required
+            >
+              <option value="">Select</option>
+              {picklists.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.picklist_no} · {p.delivery_date}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selected ? (
+            <div className="space-y-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+                From picklist / ledger
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <InfoField
+                  label="Gate pass"
+                  value={selected.gate_pass.gate_pass_no}
+                />
+                {selected.customers.length <= 1 ? (
+                  <InfoField
+                    label="Customer"
+                    value={
+                      selectedCustomer
+                        ? `${selectedCustomer.code} — ${selectedCustomer.name}`
+                        : "—"
+                    }
+                  />
+                ) : (
+                  <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+                      Customer
+                    </p>
+                    <select
+                      className="mt-1 w-full rounded-lg border border-[var(--line)] bg-white px-2.5 py-1.5 text-sm"
+                      value={selectedCustomer?.id ?? ""}
+                      onChange={(e) => setCustomerId(e.target.value)}
+                      required
+                    >
+                      {selected.customers.map((c) => (
+                        <option key={c.picklist_customer_id} value={c.id}>
+                          {c.code} — {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <InfoField
+                  label="Invoice no"
+                  value={selectedCustomer?.invoice_no || "—"}
+                />
+                <InfoField
+                  label="Picklist amount"
+                  value={money(selectedCustomer?.sale_amount ?? 0)}
+                />
+                <InfoField
+                  label="Customer outstanding"
+                  value={money(selectedCustomer?.outstanding ?? 0)}
+                />
+              </div>
+              <p className="text-xs text-[var(--ink-muted)]">
+                Outstanding is the customer’s current AR balance before this collection.
+                Cash / online / cheque reduce it; credit lines are kept for history only.
+              </p>
             </div>
-            <div>
-              <Label>Gate pass</Label>
-              <select
-                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
-                value={gatePassId}
-                onChange={(e) => setGatePassId(e.target.value)}
-                required
-              >
-                <option value="">Select</option>
-                {filteredGps.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.gate_pass_no}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Customer</Label>
-              <select
-                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                required
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} — {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Invoice no</Label>
-              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
-            </div>
-            <div>
-              <Label>Outstanding balance</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={outstanding}
-                onChange={(e) => setOutstanding(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Remarks</Label>
-              <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
-            </div>
+          ) : (
+            <p className="rounded-xl bg-[var(--surface-2)] px-3.5 py-3 text-sm text-[var(--ink-muted)]">
+              Select a picklist to load gate pass, customer, invoice, and balances.
+            </p>
+          )}
+
+          <div>
+            <Label>Remarks</Label>
+            <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </div>
 
           <div className="space-y-3">
@@ -336,7 +384,7 @@ export function CashCollectionClient({
             ))}
           </div>
 
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || !selected}>
             {busy ? "Saving…" : "Save collection"}
           </Button>
         </form>

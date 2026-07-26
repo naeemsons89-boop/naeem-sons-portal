@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSessionProfile } from "@/lib/auth";
 import { addDays, type GrnLineInput } from "@/lib/grn";
 import { canTouchGrn, insertGrnLines } from "@/lib/grn-server";
+import { nextCode } from "@/lib/ops";
 import { can } from "@/lib/permissions";
 import { applyPoReceive } from "@/lib/po-server";
 import { adjustStock } from "@/lib/stock";
@@ -179,7 +180,9 @@ export async function POST(request: Request, ctx: Ctx) {
       }
 
       for (const line of lines) {
-        if (!line.batch_code) throw new Error(`Line ${line.line_no}: missing batch`);
+        const batchCode =
+          (line.batch_code as string | null)?.trim() ||
+          (await nextCode(admin, "batch"));
 
         let expiry = line.expiry_date as string | null;
         if (!expiry && line.mfg_date) {
@@ -198,7 +201,7 @@ export async function POST(request: Request, ctx: Ctx) {
           .upsert(
             {
               sku_id: line.sku_id,
-              batch_code: line.batch_code,
+              batch_code: batchCode,
               mfg_date: line.mfg_date,
               expiry_date: expiry,
               is_unknown: false,
@@ -213,7 +216,7 @@ export async function POST(request: Request, ctx: Ctx) {
 
         await admin
           .from("grn_lines")
-          .update({ batch_id: batch.id, expiry_date: expiry })
+          .update({ batch_id: batch.id, batch_code: batchCode, expiry_date: expiry })
           .eq("id", line.id);
 
         const goodQty =

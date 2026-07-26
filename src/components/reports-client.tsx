@@ -1,351 +1,327 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { Download } from "lucide-react";
 
 import { Button, Card, Input, Label } from "@/components/ui";
 
-type Tab = "stock" | "movements" | "recall" | "sales";
+type ReportDef = {
+  id: string;
+  title: string;
+  description: string;
+  group: "Inventory" | "Documents" | "Finance" | "Masters";
+  needsDates?: boolean;
+  needsQuery?: boolean;
+  queryLabel?: string;
+  queryPlaceholder?: string;
+};
+
+const REPORTS: ReportDef[] = [
+  {
+    id: "stock",
+    title: "Stock & value",
+    description: "Every on-hand balance with SKU, batch, bin, warehouse, and values.",
+    group: "Inventory",
+  },
+  {
+    id: "movements",
+    title: "Stock movements",
+    description: "Full movement ledger with actor user id, name, email, and timestamp.",
+    group: "Inventory",
+    needsDates: true,
+  },
+  {
+    id: "recall",
+    title: "Batch recall",
+    description: "Batch match, on-hand, full trail, and customer distribution with actors.",
+    group: "Inventory",
+    needsQuery: true,
+    queryLabel: "Batch / barcode / SKU",
+    queryPlaceholder: "Enter batch code or barcode",
+  },
+  {
+    id: "sales",
+    title: "Sales (picked lines)",
+    description: "Picked picklist lines with customers, routes, load actors, and amounts.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "po",
+    title: "Purchase orders",
+    description: "PO header + every line, supplier, warehouse, and created-by user.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "grn",
+    title: "GRN",
+    description: "GRN header + lines with physical/finance post actors and timestamps.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "picklists",
+    title: "Picklists",
+    description: "All picklist lines with customers, batches, load-out/in actors.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "gate_passes",
+    title: "Gate passes",
+    description: "Gate-pass lines with issue/approve/security actors and batch detail.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "returns",
+    title: "Returns",
+    description: "Return lines with reason, batch, posted/created users and times.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "write_offs",
+    title: "Write-offs",
+    description: "Write-off lines with reason, condition, and posted/created actors.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "exchanges",
+    title: "Exchanges",
+    description: "Exchange in/out lines with customer, reason, and actor detail.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "foc",
+    title: "FOC issues",
+    description: "FOC lines with customer, picklist link, and posted/created actors.",
+    group: "Documents",
+    needsDates: true,
+  },
+  {
+    id: "cash_collections",
+    title: "Cash collections",
+    description: "Every payment line with collector user, method, refs, and proofs.",
+    group: "Finance",
+    needsDates: true,
+  },
+  {
+    id: "sale_ledger",
+    title: "Sale ledger",
+    description: "Customer ledger entries with links, signed amounts, and created-by.",
+    group: "Finance",
+    needsDates: true,
+  },
+  {
+    id: "skus",
+    title: "SKU master",
+    description: "Full SKU catalog with brand, category, prices, and timestamps.",
+    group: "Masters",
+  },
+  {
+    id: "customers",
+    title: "Customers",
+    description: "Customer master with route, opening balance, and contact fields.",
+    group: "Masters",
+  },
+  {
+    id: "suppliers",
+    title: "Suppliers",
+    description: "Supplier master with codes, contact, and active status.",
+    group: "Masters",
+  },
+];
+
+const GROUPS: ReportDef["group"][] = ["Inventory", "Documents", "Finance", "Masters"];
+
+function karachiToday() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+}
+
+function karachiDaysAgo(days: number) {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  now.setDate(now.getDate() - days);
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export function ReportsClient({ canExport }: { canExport: boolean }) {
-  const [tab, setTab] = useState<Tab>("stock");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [q, setQ] = useState("");
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
-  const [dataTab, setDataTab] = useState<Tab | null>(null);
+  const defaults = useMemo(
+    () => ({ from: karachiDaysAgo(30), to: karachiToday() }),
+    [],
+  );
+  const [filter, setFilter] = useState("");
+  const [fromByReport, setFromByReport] = useState<Record<string, string>>({});
+  const [toByReport, setToByReport] = useState<Record<string, string>>({});
+  const [qByReport, setQByReport] = useState<Record<string, string>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const tabRef = useRef(tab);
-  tabRef.current = tab;
 
-  const load = useCallback(async () => {
-    const requested = tab;
-    setBusy(true);
-    setError(null);
-    setData(null);
-    setDataTab(null);
-    const params = new URLSearchParams({ type: requested });
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (q) params.set("q", q);
-    const res = await fetch(`/api/reports?${params}`);
-    const json = await res.json();
-    if (requested !== tabRef.current) return;
-    setBusy(false);
-    if (!res.ok) {
-      setError(json.error ?? "Failed");
-      setData(null);
-      setDataTab(null);
-      return;
-    }
-    setData(json);
-    setDataTab(requested);
-  }, [tab, from, to, q]);
+  const visible = useMemo(() => {
+    const s = filter.trim().toLowerCase();
+    if (!s) return REPORTS;
+    return REPORTS.filter(
+      (r) =>
+        r.title.toLowerCase().includes(s) ||
+        r.description.toLowerCase().includes(s) ||
+        r.group.toLowerCase().includes(s),
+    );
+  }, [filter]);
 
-  useEffect(() => {
-    if (tab === "recall") return;
-    void load();
-  }, [tab, load]);
-
-  function csvUrl() {
-    const params = new URLSearchParams({ type: tab, format: "csv" });
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
-    if (q) params.set("q", q);
-    return `/api/reports?${params}`;
+  function getFrom(id: string) {
+    return fromByReport[id] ?? defaults.from;
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "stock", label: "Stock & value" },
-    { id: "movements", label: "Movements" },
-    { id: "recall", label: "Batch recall" },
-    { id: "sales", label: "Sales" },
-  ];
+  function getTo(id: string) {
+    return toByReport[id] ?? defaults.to;
+  }
 
-  const showForTab = Boolean(data && dataTab === tab);
+  function getQ(id: string) {
+    return qByReport[id] ?? "";
+  }
+
+  function download(report: ReportDef) {
+    if (!canExport) return;
+    if (report.needsQuery && !getQ(report.id).trim()) {
+      setError(`Enter ${report.queryLabel ?? "a search value"} for ${report.title}.`);
+      return;
+    }
+    setError(null);
+    setBusyId(report.id);
+    const params = new URLSearchParams({ type: report.id, format: "csv" });
+    if (report.needsDates) {
+      const from = getFrom(report.id);
+      const to = getTo(report.id);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+    }
+    if (report.needsQuery) params.set("q", getQ(report.id).trim());
+    window.location.href = `/api/reports?${params}`;
+    window.setTimeout(() => setBusyId(null), 1200);
+  }
+
+  if (!canExport) {
+    return (
+      <Card>
+        <p className="text-sm text-[var(--ink-muted)]">
+          You can view this page, but CSV download requires export permission.
+        </p>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <Button
-            key={t.id}
-            type="button"
-            size="sm"
-            variant={tab === t.id ? "primary" : "secondary"}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </Button>
-        ))}
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-xl">
+          <p className="text-sm text-[var(--ink-muted)]">
+            Download deep-detail CSVs for every portal dataset. Each file includes linked
+            columns plus user id, name, email, and activity timestamps where available.
+          </p>
+        </div>
+        <div className="w-full sm:max-w-xs">
+          <Label>Filter reports</Label>
+          <Input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search report name…"
+          />
+        </div>
       </div>
 
-      <Card className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-4">
-          {(tab === "movements" || tab === "sales") && (
-            <>
-              <div>
-                <Label>From</Label>
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-              </div>
-              <div>
-                <Label>To</Label>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-              </div>
-            </>
-          )}
-          {(tab === "movements" || tab === "recall") && (
-            <div className="sm:col-span-2">
-              <Label>{tab === "recall" ? "Batch / barcode / SKU" : "Filter"}</Label>
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={
-                  tab === "recall" ? "Enter batch code or barcode" : "SKU / batch / doc"
-                }
-              />
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={busy} onClick={() => void load()}>
-            {busy ? "Loading…" : tab === "recall" ? "Trace batch" : "Refresh"}
-          </Button>
-          {canExport ? (
-            <a
-              href={csvUrl()}
-              className="inline-flex items-center rounded-full border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-semibold hover:bg-[var(--surface-2)]"
-            >
-              Export CSV
-            </a>
-          ) : null}
-        </div>
-      </Card>
-
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-      {busy ? <p className="text-sm text-[var(--ink-muted)]">Loading…</p> : null}
 
-      {showForTab && tab === "stock" && data?.rows ? (
-        <StockTable data={data} />
+      {GROUPS.map((group) => {
+        const items = visible.filter((r) => r.group === group);
+        if (!items.length) return null;
+        return (
+          <section key={group} className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+              {group}
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((report) => (
+                <Card key={report.id} className="flex flex-col gap-3">
+                  <div>
+                    <h3 className="font-semibold text-[var(--ink)]">{report.title}</h3>
+                    <p className="mt-1 text-sm text-[var(--ink-muted)]">{report.description}</p>
+                  </div>
+
+                  {report.needsDates ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label>From</Label>
+                        <Input
+                          type="date"
+                          value={getFrom(report.id)}
+                          onChange={(e) =>
+                            setFromByReport((prev) => ({
+                              ...prev,
+                              [report.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>To</Label>
+                        <Input
+                          type="date"
+                          value={getTo(report.id)}
+                          onChange={(e) =>
+                            setToByReport((prev) => ({
+                              ...prev,
+                              [report.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {report.needsQuery ? (
+                    <div>
+                      <Label>{report.queryLabel}</Label>
+                      <Input
+                        value={getQ(report.id)}
+                        onChange={(e) =>
+                          setQByReport((prev) => ({
+                            ...prev,
+                            [report.id]: e.target.value,
+                          }))
+                        }
+                        placeholder={report.queryPlaceholder}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="mt-auto pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={busyId === report.id}
+                      onClick={() => download(report)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Download className="size-3.5" />
+                      {busyId === report.id ? "Preparing…" : "Download CSV"}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      {visible.length === 0 ? (
+        <p className="text-sm text-[var(--ink-muted)]">No reports match that filter.</p>
       ) : null}
-      {showForTab && tab === "movements" && data?.rows ? (
-        <MovementsTable rows={data.rows as Record<string, unknown>[]} />
-      ) : null}
-      {showForTab && tab === "recall" && data ? <RecallView data={data} /> : null}
-      {showForTab && tab === "sales" && data?.rows ? <SalesTable data={data} /> : null}
     </div>
-  );
-}
-
-function StockTable({ data }: { data: Record<string, unknown> }) {
-  const rows = data.rows as Array<Record<string, unknown>>;
-  const totals = data.totals as { qty_units?: number; inventory_value?: number | null };
-  const showFinance = Boolean(data.showFinance);
-  return (
-    <Card className="overflow-x-auto">
-      {totals ? (
-        <p className="mb-3 text-sm text-[var(--ink-muted)]">
-          Total qty {totals.qty_units}
-          {showFinance && totals.inventory_value != null
-            ? ` · Inventory value ${Number(totals.inventory_value).toFixed(2)}`
-            : ""}
-        </p>
-      ) : null}
-      <table className="min-w-full text-left text-sm">
-        <thead className="text-xs uppercase text-[var(--ink-muted)]">
-          <tr>
-            <th className="py-2 pr-2">WH</th>
-            <th className="py-2 pr-2">Cat</th>
-            <th className="py-2 pr-2">SKU</th>
-            <th className="py-2 pr-2">Batch</th>
-            <th className="py-2 pr-2">Exp</th>
-            <th className="py-2 pr-2">Qty</th>
-            <th className="py-2 pr-2">Cond</th>
-            <th className="py-2 pr-2">Fin</th>
-            {showFinance ? <th className="py-2">Value</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-[var(--line)]">
-              <td className="py-2 pr-2">{String(r.warehouse)}</td>
-              <td className="py-2 pr-2">{String(r.category || "—")}</td>
-              <td className="py-2 pr-2">
-                <div className="font-medium">{String(r.product_code)}</div>
-                <div className="text-xs text-[var(--ink-muted)]">{String(r.description)}</div>
-              </td>
-              <td className="py-2 pr-2 font-mono text-xs">{String(r.batch_code)}</td>
-              <td className="py-2 pr-2">{String(r.expiry_date || "—")}</td>
-              <td className="py-2 pr-2">{String(r.qty_units)}</td>
-              <td className="py-2 pr-2">{String(r.condition)}</td>
-              <td className="py-2 pr-2">{String(r.finance_status)}</td>
-              {showFinance ? (
-                <td className="py-2">{Number(r.inventory_value ?? 0).toFixed(2)}</td>
-              ) : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
-  );
-}
-
-function MovementsTable({ rows }: { rows: Record<string, unknown>[] }) {
-  return (
-    <Card className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead className="text-xs uppercase text-[var(--ink-muted)]">
-          <tr>
-            <th className="py-2 pr-2">When</th>
-            <th className="py-2 pr-2">Type</th>
-            <th className="py-2 pr-2">SKU</th>
-            <th className="py-2 pr-2">Batch</th>
-            <th className="py-2 pr-2">Qty</th>
-            <th className="py-2 pr-2">Doc</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr
-              key={String(r.id ?? `${r.created_at}-${r.product_code}-${r.batch_code}-${i}`)}
-              className="border-t border-[var(--line)]"
-            >
-              <td className="py-2 pr-2 text-xs">
-                {r.created_at ? new Date(String(r.created_at)).toLocaleString("en-PK") : "—"}
-              </td>
-              <td className="py-2 pr-2">{String(r.movement_type ?? "—")}</td>
-              <td className="py-2 pr-2">{String(r.product_code ?? "—")}</td>
-              <td className="py-2 pr-2 font-mono text-xs">{String(r.batch_code ?? "—")}</td>
-              <td className="py-2 pr-2">{String(r.qty_units ?? "—")}</td>
-              <td className="py-2 pr-2">
-                {String(r.document_no || "—")}
-                <div className="text-xs text-[var(--ink-muted)]">{String(r.document_type || "")}</div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length === 0 ? (
-        <p className="text-sm text-[var(--ink-muted)]">No movements in range.</p>
-      ) : null}
-    </Card>
-  );
-}
-
-function RecallView({ data }: { data: Record<string, unknown> }) {
-  const batches = (data.batches as Record<string, unknown>[]) ?? [];
-  const customers = (data.customers as Record<string, unknown>[]) ?? [];
-  const movements = (data.movements as Record<string, unknown>[]) ?? [];
-  const balances = (data.balances as Record<string, unknown>[]) ?? [];
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <h2 className="mb-2 font-semibold">Matched batches</h2>
-        {batches.length === 0 ? (
-          <p className="text-sm text-[var(--ink-muted)]">No batches found. Run Trace first.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {batches.map((b) => {
-              const sku = b.sku as { product_code?: string; description?: string } | null;
-              return (
-                <li key={String(b.id)}>
-                  <span className="font-mono font-semibold">{String(b.batch_code)}</span> ·{" "}
-                  {sku?.product_code} — {sku?.description}
-                  {b.expiry_date ? ` · exp ${String(b.expiry_date)}` : ""}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-      <Card>
-        <h2 className="mb-2 font-semibold">Still on hand</h2>
-        <ul className="space-y-1 text-sm">
-          {balances.map((b, i) => {
-            const sku = b.sku as { product_code?: string } | null;
-            const batch = b.batch as { batch_code?: string } | null;
-            const wh = b.warehouse as { code?: string } | null;
-            return (
-              <li key={i}>
-                {wh?.code} · {sku?.product_code} · {batch?.batch_code} · {String(b.condition)}/
-                {String(b.finance_status)} × {String(b.qty_units)}
-              </li>
-            );
-          })}
-          {balances.length === 0 ? (
-            <li className="text-[var(--ink-muted)]">None on hand</li>
-          ) : null}
-        </ul>
-      </Card>
-      <Card>
-        <h2 className="mb-2 font-semibold">Went to customers (via gate pass)</h2>
-        <ul className="space-y-1 text-sm">
-          {customers.map((c, i) => (
-            <li key={i}>
-              {String(c.customer_code)} {String(c.customer_name)} · GP {String(c.gate_pass_no)} ·
-              PL {String(c.picklist_no)} · batch {String(c.batch_code)} × {String(c.qty_units)}
-            </li>
-          ))}
-          {customers.length === 0 ? (
-            <li className="text-[var(--ink-muted)]">No outward gate-pass lines for these batches</li>
-          ) : null}
-        </ul>
-      </Card>
-      <Card>
-        <h2 className="mb-2 font-semibold">Full movement trail</h2>
-        <ul className="max-h-80 space-y-1 overflow-y-auto text-sm">
-          {movements.map((m, i) => {
-            const sku = m.sku as { product_code?: string } | null;
-            const batch = m.batch as { batch_code?: string } | null;
-            return (
-              <li key={i}>
-                {m.created_at ? new Date(String(m.created_at)).toLocaleString("en-PK") : ""} ·{" "}
-                {String(m.movement_type)} · {sku?.product_code} · {batch?.batch_code} ×{" "}
-                {String(m.qty_units)} · {String(m.document_no || "")}
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
-    </div>
-  );
-}
-
-function SalesTable({ data }: { data: Record<string, unknown> }) {
-  const rows = data.rows as Array<Record<string, unknown>>;
-  const totals = data.totals as { qty_picked?: number; sale_amount?: number };
-  return (
-    <Card className="overflow-x-auto">
-      {totals ? (
-        <p className="mb-3 text-sm text-[var(--ink-muted)]">
-          Qty {totals.qty_picked} · Sale amount {Number(totals.sale_amount ?? 0).toFixed(2)}
-        </p>
-      ) : null}
-      <table className="min-w-full text-left text-sm">
-        <thead className="text-xs uppercase text-[var(--ink-muted)]">
-          <tr>
-            <th className="py-2 pr-2">Picklist</th>
-            <th className="py-2 pr-2">Date</th>
-            <th className="py-2 pr-2">SKU</th>
-            <th className="py-2 pr-2">Qty</th>
-            <th className="py-2 pr-2">Price</th>
-            <th className="py-2">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t border-[var(--line)]">
-              <td className="py-2 pr-2">{String(r.picklist_no)}</td>
-              <td className="py-2 pr-2">{String(r.delivery_date)}</td>
-              <td className="py-2 pr-2">{String(r.product_code)}</td>
-              <td className="py-2 pr-2">{String(r.qty_picked)}</td>
-              <td className="py-2 pr-2">{String(r.sale_price_pack)}</td>
-              <td className="py-2">{Number(r.sale_amount).toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
   );
 }

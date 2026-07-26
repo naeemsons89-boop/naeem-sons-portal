@@ -87,10 +87,6 @@ export function ExchangeClient({
       setError("Select pickable batch for OUT");
       return;
     }
-    if (direction === "in" && !batchCode.trim() && !batchId) {
-      setError("Enter batch code for IN");
-      return;
-    }
     const batch = batches.find((b) => b.batch_id === batchId);
     setLines((prev) => [
       ...prev,
@@ -98,7 +94,7 @@ export function ExchangeClient({
         direction,
         sku_id: sku.id,
         batch_id: direction === "out" ? batchId : undefined,
-        batch_code: direction === "in" ? batchCode.trim() : batch?.batch_code,
+        batch_code: direction === "in" ? (batchCode.trim() || undefined) : batch?.batch_code,
         condition: direction === "in" ? condition : "good",
         qty_units: Number(qty || 0),
         label: `${direction.toUpperCase()} ${sku.product_code}`,
@@ -207,6 +203,7 @@ export function ExchangeClient({
                 <Input
                   value={batchCode}
                   onChange={(e) => setBatchCode(e.target.value)}
+                  placeholder="Auto if blank (BAT…)"
                 />
               </div>
               <div>

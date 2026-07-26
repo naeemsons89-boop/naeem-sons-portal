@@ -127,7 +127,7 @@ export function GrnCreateForm({
       .map((l) => ({
         sku_id: l.sku_id,
         po_line_id: l.po_line_id,
-        batch_code: l.batch_code.trim(),
+        batch_code: l.batch_code.trim() || undefined,
         mfg_date: l.mfg_date || null,
         expiry_date: l.expiry_date || null,
         qty_cases: 0,
@@ -141,14 +141,6 @@ export function GrnCreateForm({
       setLoading(false);
       setError("Include at least one line with quantity");
       return;
-    }
-
-    for (const l of payloadLines) {
-      if (!l.batch_code) {
-        setLoading(false);
-        setError("Batch code required on all included lines");
-        return;
-      }
     }
 
     const res = await fetch("/api/grn", {
@@ -278,7 +270,7 @@ export function GrnCreateForm({
                     onChange={(e) =>
                       updateLine(line.po_line_id, { batch_code: e.target.value })
                     }
-                    required
+                    placeholder="Auto if blank (BAT…)"
                   />
                 </div>
                 <div>

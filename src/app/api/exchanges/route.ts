@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
-import { ensureMainWarehouse, nextDocNo } from "@/lib/ops";
+import { ensureMainWarehouse, nextCode, nextDocNo } from "@/lib/ops";
 import { can } from "@/lib/permissions";
 import { adjustStock } from "@/lib/stock";
 import { createServiceClient } from "@/lib/supabase/middleware";
@@ -88,13 +88,14 @@ export async function POST(request: Request) {
       const condition = line.condition ?? "good";
 
       let batchId = line.batch_id || null;
-      if (!batchId && line.batch_code?.trim()) {
+      if (!batchId) {
+        const batchCode = line.batch_code?.trim() || (await nextCode(admin, "batch"));
         const { data: batch, error: bErr } = await admin
           .from("batches")
           .upsert(
             {
               sku_id: line.sku_id,
-              batch_code: line.batch_code.trim(),
+              batch_code: batchCode,
               is_unknown: false,
             },
             { onConflict: "sku_id,batch_code" },

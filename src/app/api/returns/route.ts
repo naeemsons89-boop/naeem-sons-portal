@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionProfile } from "@/lib/auth";
-import { ensureMainWarehouse, nextDocNo } from "@/lib/ops";
+import { ensureMainWarehouse, nextCode, nextDocNo } from "@/lib/ops";
 import { can } from "@/lib/permissions";
 import { postReturn } from "@/lib/returns";
 import { createServiceClient } from "@/lib/supabase/middleware";
@@ -94,12 +94,12 @@ export async function POST(request: Request) {
 
       let batchId = line.batch_id || null;
       if (line.is_unknown_batch) {
-        const unknownCode = `UNKNOWN-${Date.now().toString().slice(-6)}`;
+        const unknownCode = await nextCode(admin, "batch");
         const { data: batch, error: bErr } = await admin
           .from("batches")
           .insert({
             sku_id: line.sku_id,
-            batch_code: unknownCode,
+            batch_code: `UNK-${unknownCode.replace(/^BAT/, "")}`,
             is_unknown: true,
             notes: "Unknown batch return — pending manager approval",
           })
@@ -107,13 +107,14 @@ export async function POST(request: Request) {
           .single();
         if (bErr || !batch) throw new Error(bErr?.message ?? "Unknown batch failed");
         batchId = batch.id;
-      } else if (line.batch_code?.trim()) {
+      } else {
+        const batchCode = line.batch_code?.trim() || (await nextCode(admin, "batch"));
         const { data: batch, error: bErr } = await admin
           .from("batches")
           .upsert(
             {
               sku_id: line.sku_id,
-              batch_code: line.batch_code.trim(),
+              batch_code: batchCode,
               is_unknown: false,
             },
             { onConflict: "sku_id,batch_code" },

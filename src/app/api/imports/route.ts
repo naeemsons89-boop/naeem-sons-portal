@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { syncOpeningLedger } from "@/lib/sale-ledger";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import type { AppRole } from "@/types/database";
 
@@ -250,23 +251,45 @@ export async function POST(request: Request) {
         route_id = route?.id ?? null;
       }
 
-      const { error } = await supabase.from("customers").upsert(
-        {
-          code,
-          name,
-          address: col.address >= 0 ? r[col.address] || null : null,
-          phone: col.phone >= 0 ? r[col.phone] || null : null,
-          opening_balance: num(r[col.balance]) ?? 0,
-          route_id,
-          is_active: true,
-        },
-        { onConflict: "code" },
-      );
+      const openingBalance = num(r[col.balance]) ?? 0;
+      const { data: customer, error } = await supabase
+        .from("customers")
+        .upsert(
+          {
+            code,
+            name,
+            address: col.address >= 0 ? r[col.address] || null : null,
+            phone: col.phone >= 0 ? r[col.phone] || null : null,
+            opening_balance: openingBalance,
+            route_id,
+            is_active: true,
+          },
+          { onConflict: "code" },
+        )
+        .select("id,opening_balance")
+        .single();
       if (error) {
         return NextResponse.json(
           { error: `Customer ${code}: ${error.message}` },
           { status: 400 },
         );
+      }
+      if (customer?.id) {
+        try {
+          await syncOpeningLedger(
+            supabase,
+            customer.id as string,
+            Number(customer.opening_balance ?? openingBalance),
+            profile?.id,
+          );
+        } catch (e) {
+          return NextResponse.json(
+            {
+              error: `Customer ${code}: ${e instanceof Error ? e.message : "Ledger sync failed"}`,
+            },
+            { status: 400 },
+          );
+        }
       }
       upserted += 1;
     }

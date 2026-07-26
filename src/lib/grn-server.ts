@@ -1,4 +1,5 @@
 import { addDays, lineUnits, type GrnLineInput } from "@/lib/grn";
+import { nextCode } from "@/lib/ops";
 import { can } from "@/lib/permissions";
 import { createServiceClient } from "@/lib/supabase/middleware";
 import type { AppRole } from "@/types/database";
@@ -26,12 +27,15 @@ export async function insertGrnLines(
   if (skuError) throw new Error(skuError.message);
   const skuMap = new Map((skus ?? []).map((s) => [s.id, s]));
 
-  const rows = lines.map((line, idx) => {
+  const rows = [];
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
     const sku = skuMap.get(line.sku_id);
     if (!sku) throw new Error(`Unknown SKU ${line.sku_id}`);
-    if (!line.batch_code?.trim()) {
-      throw new Error(`Line ${idx + 1}: batch code required`);
-    }
+
+    const batch_code = line.batch_code?.trim()
+      ? line.batch_code.trim()
+      : await nextCode(admin, "batch");
 
     const ppc = sku.packs_per_carton || 1;
     const qty_units = lineUnits({
@@ -53,12 +57,12 @@ export async function insertGrnLines(
     const line_amount =
       purchase_price_pack != null ? Number(purchase_price_pack) * qty_units : null;
 
-    return {
+    rows.push({
       grn_id: grnId,
       line_no: idx + 1,
       sku_id: line.sku_id,
       po_line_id: line.po_line_id || null,
-      batch_code: line.batch_code.trim(),
+      batch_code,
       mfg_date: line.mfg_date || null,
       expiry_date: expiry,
       qty_cases: line.qty_cases ?? 0,
@@ -69,8 +73,8 @@ export async function insertGrnLines(
       purchase_price_ctn,
       line_amount,
       finance_status: "pending" as const,
-    };
-  });
+    });
+  }
 
   const { error } = await admin.from("grn_lines").insert(rows);
   if (error) throw new Error(error.message);

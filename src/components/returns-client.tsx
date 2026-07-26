@@ -75,19 +75,15 @@ export function ReturnsClient({
       setError("Select SKU");
       return;
     }
-    if (!unknown && !batchCode.trim()) {
-      setError("Enter batch or mark unknown");
-      return;
-    }
     setLines((prev) => [
       ...prev,
       {
         sku_id: sku.id,
-        batch_code: unknown ? undefined : batchCode.trim(),
+        batch_code: unknown ? undefined : batchCode.trim() || undefined,
         is_unknown_batch: unknown,
         condition,
         qty_units: Number(qty || 0),
-        label: `${sku.product_code} · ${unknown ? "UNKNOWN" : batchCode} · ${condition}`,
+        label: `${sku.product_code} · ${unknown ? "UNKNOWN" : batchCode.trim() || "AUTO"} · ${condition}`,
       },
     ]);
     setBatchCode("");
@@ -211,6 +207,7 @@ export function ReturnsClient({
                 value={batchCode}
                 disabled={unknown}
                 onChange={(e) => setBatchCode(e.target.value)}
+                placeholder="Auto if blank (BAT…)"
               />
             </div>
             <div>

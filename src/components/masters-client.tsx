@@ -294,13 +294,21 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
           <h2 className="font-semibold">{editId ? "Edit" : "Add new"}</h2>
           {entity === "skus" ? (
             <div className="grid gap-2 sm:grid-cols-3">
-              <div>
-                <Label>Product code</Label>
-                <Input
-                  value={form.product_code ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, product_code: e.target.value }))}
-                />
-              </div>
+              {editId ? (
+                <div>
+                  <Label>Product code</Label>
+                  <Input
+                    value={form.product_code ?? ""}
+                    readOnly
+                    tabIndex={-1}
+                    className="cursor-default bg-[var(--surface-2)] text-[var(--ink-muted)] focus:ring-0"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--ink-muted)] sm:col-span-1">
+                  Product code auto-generated (SKU000001…).
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <Label>Description</Label>
                 <Input
@@ -518,14 +526,8 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
                   ))}
                 </select>
               </div>
-              <div>
-                <Label>Vendor SKU code</Label>
-                <Input
-                  value={mapForm.supplier_sku_code}
-                  onChange={(e) =>
-                    setMapForm((f) => ({ ...f, supplier_sku_code: e.target.value }))
-                  }
-                />
+              <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--ink-muted)]">
+                Vendor SKU code auto-generated if left blank (VSKU000001…).
               </div>
               <div>
                 <Label>Default purchase price</Label>

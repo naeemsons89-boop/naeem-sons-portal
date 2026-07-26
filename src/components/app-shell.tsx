@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeftRight,
   BarChart3,
+  BookOpen,
   Boxes,
   ChevronDown,
   ClipboardList,
@@ -51,6 +52,11 @@ type NavItem = {
 
 const topMenu: NavItem[] = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
+];
+
+const paymentChildren: NavItem[] = [
+  { href: "/app/cash-collections", label: "Collections", icon: Wallet },
+  { href: "/app/sale-ledger", label: "Sale ledger", icon: BookOpen },
 ];
 
 const warehouseChildren: NavItem[] = [
@@ -188,11 +194,15 @@ function SidebarNav({
   onNavigate?: () => void;
 }) {
   const menuItems = topMenu;
+  const paymentItems = paymentChildren;
   const warehouseItems = filterNav(warehouseChildren, role);
   const movementsItems = filterNav(movementsChildren, role);
   const buildItems = filterNav(buildChildren, role);
   const generalItems = filterNav(generalGroup, role);
 
+  const paymentChildActive = paymentItems.some((item) =>
+    isActive(pathname, item.href),
+  );
   const warehouseChildActive = warehouseItems.some((item) =>
     isActive(pathname, item.href),
   );
@@ -201,10 +211,14 @@ function SidebarNav({
   );
   const buildChildActive = buildItems.some((item) => isActive(pathname, item.href));
 
+  const [paymentOpen, setPaymentOpen] = useState(paymentChildActive);
   const [warehouseOpen, setWarehouseOpen] = useState(warehouseChildActive);
   const [movementsOpen, setMovementsOpen] = useState(movementsChildActive);
   const [buildOpen, setBuildOpen] = useState(buildChildActive);
 
+  useEffect(() => {
+    if (paymentChildActive) setPaymentOpen(true);
+  }, [paymentChildActive]);
   useEffect(() => {
     if (warehouseChildActive) setWarehouseOpen(true);
   }, [warehouseChildActive]);
@@ -233,13 +247,25 @@ function SidebarNav({
             />
           ))}
 
-          <NavLink
-            href="/app/cash-collections"
-            label="Collections"
+          <CollapsibleGroup
+            label="Payment"
             icon={Wallet}
-            active={isActive(pathname, "/app/cash-collections")}
-            onNavigate={onNavigate}
-          />
+            open={paymentOpen}
+            onToggle={() => setPaymentOpen((o) => !o)}
+            childActive={paymentChildActive}
+          >
+            {paymentItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={isActive(pathname, item.href)}
+                nested
+                onNavigate={onNavigate}
+              />
+            ))}
+          </CollapsibleGroup>
 
           <CollapsibleGroup
             label="Warehouse"
