@@ -45,7 +45,7 @@ export async function GET(request: Request) {
         .limit(20);
       const supplierIds = (matchedSuppliers ?? []).map((row) => row.id as string);
 
-      let bySupplier: typeof byNo = [];
+      let bySupplier: Array<Record<string, unknown>> = [];
       if (supplierIds.length) {
         const { data } = await supabase
           .from("purchase_orders")
@@ -53,11 +53,14 @@ export async function GET(request: Request) {
           .in("supplier_id", supplierIds)
           .order("created_at", { ascending: false })
           .limit(8);
-        bySupplier = data ?? [];
+        bySupplier = (data ?? []) as Array<Record<string, unknown>>;
       }
 
       const seen = new Set<string>();
-      for (const row of [...(byNo ?? []), ...bySupplier]) {
+      for (const row of [
+        ...((byNo ?? []) as Array<Record<string, unknown>>),
+        ...bySupplier,
+      ]) {
         const id = row.id as string;
         if (seen.has(id)) continue;
         seen.add(id);
