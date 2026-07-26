@@ -2,7 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DownloadReportBar } from "@/components/download-report-bar";
-import { Badge, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  ListPanel,
+  ListRow,
+  PageHeader,
+  statusTone,
+} from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { canTouchPicklist } from "@/lib/picklist-server";
@@ -47,49 +54,49 @@ export default async function GatePassesPage() {
           />
         }
       />
-      <div className="space-y-3">
-        {rows.map((g) => (
-          <Card key={g.id}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold">{g.gate_pass_no}</p>
-                  <Badge tone={statusTone(g.status)} className="capitalize">
-                    {g.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-[var(--ink-muted)]">
+      {rows.length === 0 ? (
+        <EmptyState>No gate passes yet. Issue one from a picklist after picking.</EmptyState>
+      ) : (
+        <ListPanel>
+          {rows.map((g) => (
+            <ListRow
+              key={g.id}
+              primary={g.gate_pass_no}
+              meta={
+                <>
                   {g.picklist?.picklist_no} · {g.picklist?.delivery_date}
                   {g.security_out_by_name
                     ? ` · Security: ${g.security_out_by_name}`
                     : ""}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href={`/app/print/gate-pass/${g.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-semibold text-[var(--brand)]"
-                >
-                  Print PDF
-                </a>
-                {g.picklist ? (
-                  <Link
-                    href={`/app/picklists/${g.picklist.id}`}
-                    className="text-sm font-semibold text-[var(--brand)]"
+                </>
+              }
+              trailing={
+                <>
+                  <Badge tone={statusTone(g.status)} className="capitalize">
+                    {g.status}
+                  </Badge>
+                  <a
+                    href={`/app/print/gate-pass/${g.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-medium text-[var(--brand)]"
                   >
-                    Open picklist →
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          </Card>
-        ))}
-        {rows.length === 0 ? (
-          <EmptyState>No gate passes yet. Issue one from a picklist after picking.</EmptyState>
-        ) : null}
-      </div>
+                    Print
+                  </a>
+                  {g.picklist ? (
+                    <Link
+                      href={`/app/picklists/${g.picklist.id}`}
+                      className="text-xs font-medium text-[var(--brand)]"
+                    >
+                      Picklist →
+                    </Link>
+                  ) : null}
+                </>
+              }
+            />
+          ))}
+        </ListPanel>
+      )}
     </div>
   );
 }

@@ -2,7 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DownloadReportBar } from "@/components/download-report-bar";
-import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ListPanel,
+  ListRow,
+  PageHeader,
+} from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchGrn } from "@/lib/grn-server";
 import { can } from "@/lib/permissions";
@@ -50,38 +57,39 @@ export default async function GrnListPage() {
         }
       />
 
-      <div className="space-y-3">
-        {grns.map((g) => {
-          const supplier = g.supplier;
-          return (
-            <Link key={g.id} href={`/app/grn/${g.id}`}>
-              <Card className="mb-3 transition hover:border-[var(--brand)]">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold">{g.grn_no}</p>
-                    <p className="text-sm text-[var(--ink-muted)]">
-                      {g.po?.po_no ? `${g.po.po_no} · ` : ""}
-                      {supplier?.name ?? "Supplier"} · DN{" "}
-                      {g.supplier_delivery_no || "—"} · {g.delivery_date}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+      {grns.length === 0 ? (
+        <EmptyState>No GRNs yet. Create one from an open purchase order.</EmptyState>
+      ) : (
+        <ListPanel>
+          {grns.map((g) => {
+            const supplier = g.supplier;
+            return (
+              <ListRow
+                key={g.id}
+                href={`/app/grn/${g.id}`}
+                primary={g.grn_no}
+                meta={
+                  <>
+                    {g.po?.po_no ? `${g.po.po_no} · ` : ""}
+                    {supplier?.name ?? "Supplier"} · DN{" "}
+                    {g.supplier_delivery_no || "—"} · {g.delivery_date}
+                  </>
+                }
+                trailing={
+                  <>
                     <Badge tone={g.physical_posted_at ? "success" : "pending"}>
-                      {g.physical_posted_at ? "Physical OK" : "Draft / receive"}
+                      {g.physical_posted_at ? "Physical OK" : "Draft"}
                     </Badge>
                     <Badge tone={g.finance_status === "posted" ? "success" : "warning"}>
                       Finance {g.finance_status}
                     </Badge>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          );
-        })}
-        {grns.length === 0 ? (
-          <EmptyState>No GRNs yet. Create one from an open purchase order.</EmptyState>
-        ) : null}
-      </div>
+                  </>
+                }
+              />
+            );
+          })}
+        </ListPanel>
+      )}
     </div>
   );
 }

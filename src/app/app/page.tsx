@@ -1,24 +1,30 @@
 import {
-  ArrowUpRight,
+  Boxes,
   ClipboardList,
+  CreditCard,
+  FileBarChart2,
   Gift,
   PackagePlus,
   Trash2,
   Truck,
   UserCheck,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 
 import type { ActivitySeries } from "@/components/dashboard/activity-chart";
 import { ActivityChart } from "@/components/dashboard/activity-chart";
+import {
+  DashMetric,
+  DashPanel,
+  DashSection,
+  DashTaskLink,
+} from "@/components/dashboard/dash-tiles";
 import { MiniCalendar } from "@/components/dashboard/mini-calendar";
-import type { PillTone } from "@/components/ui";
 import {
   Avatar,
   Badge,
-  Card,
   PageHeader,
-  StatCard,
   Table,
   Td,
   Th,
@@ -37,7 +43,11 @@ function bucketByDay(rows: MovementRow[], days: number): { label: string; value:
   const buckets = Array.from({ length: days }, (_, i) => {
     const d = new Date(now);
     d.setDate(now.getDate() - (days - 1 - i));
-    return { key: d.toDateString(), label: d.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 1), value: 0 };
+    return {
+      key: d.toDateString(),
+      label: d.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 1),
+      value: 0,
+    };
   });
   const byKey = new Map(buckets.map((b) => [b.key, b]));
   for (const row of rows) {
@@ -77,7 +87,11 @@ function bucketByMonth(rows: MovementRow[]): { label: string; value: number }[] 
   const now = new Date();
   const buckets = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-    return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString("en-US", { month: "short" }), value: 0 };
+    return {
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleDateString("en-US", { month: "short" }),
+      value: 0,
+    };
   });
   const byKey = new Map(buckets.map((b) => [b.key, b]));
   for (const row of rows) {
@@ -87,6 +101,10 @@ function bucketByMonth(rows: MovementRow[]): { label: string; value: number }[] 
     if (bucket) bucket.value += Number(row.qty_units) || 0;
   }
   return buckets.map(({ label, value }) => ({ label, value: Math.round(value) }));
+}
+
+function money(n: number) {
+  return `Rs ${Math.round(n).toLocaleString()}`;
 }
 
 export default async function DashboardPage() {
@@ -139,9 +157,7 @@ export default async function DashboardPage() {
     supabase
       .from("cash_collections")
       .select("collected_at,created_at,cash_collection_payments(amount,method)")
-      .or(
-        `collected_at.gte.${monthStartIso},created_at.gte.${monthStart.toISOString()}`,
-      )
+      .or(`collected_at.gte.${monthStartIso},created_at.gte.${monthStart.toISOString()}`)
       .limit(2000),
     can(role, "viewFinancialStock")
       ? supabase
@@ -183,11 +199,14 @@ export default async function DashboardPage() {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     })
     .flatMap((c) => c.cash_collection_payments ?? []);
+
   const collectionsMtd = mtdPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const creditMtd = mtdPayments
     .filter((p) => p.method === "credit")
     .reduce((sum, p) => sum + Number(p.amount), 0);
-  const mtdTotal = collectionsMtd;
+  const saleCollectedMtd = collectionsMtd - creditMtd;
+  const creditShare =
+    collectionsMtd > 0 ? Math.round((creditMtd / collectionsMtd) * 100) : 0;
 
   const stockRows = (stockRes.data ?? []) as Array<{
     qty_units: number;
@@ -196,46 +215,53 @@ export default async function DashboardPage() {
   }>;
   const stockValue = stockRows
     .filter((r) => r.finance_status === "posted")
-    .reduce((sum, r) => sum + Number(r.qty_units) * Number(r.sku?.purchase_price_pack ?? 0), 0);
+    .reduce(
+      (sum, r) => sum + Number(r.qty_units) * Number(r.sku?.purchase_price_pack ?? 0),
+      0,
+    );
 
-  const tasks: Array<{
-    tone: PillTone;
+  const pendingApprovals = (pendingGatePasses ?? 0) + (pendingUsers ?? 0);
+
+  type TaskItem = {
+    category: "stock" | "sale" | "credit" | "reports";
     title: string;
     subtitle: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
-  }> = [];
+  };
+
+  const tasks: TaskItem[] = [];
 
   if ((openGrns ?? 0) > 0) {
     tasks.push({
-      tone: "purple",
-      title: `${openGrns} GRN${openGrns === 1 ? "" : "s"} awaiting finance post`,
-      subtitle: "Physical received, needs finance unlock",
+      category: "stock",
+      title: `${openGrns} GRN${openGrns === 1 ? "" : "s"} awaiting finance`,
+      subtitle: "Physical received — unlock picking",
       href: "/app/grn",
       icon: PackagePlus,
     });
   }
-  if ((pendingGatePasses ?? 0) > 0) {
-    tasks.push({
-      tone: "blue",
-      title: `${pendingGatePasses} gate pass${pendingGatePasses === 1 ? "" : "es"} pending approval`,
-      subtitle: "Manager sign-off required before load-out",
-      href: "/app/gate-passes",
-      icon: Truck,
-    });
-  }
   if ((activePicklists ?? 0) > 0) {
     tasks.push({
-      tone: "mint",
+      category: "sale",
       title: `${activePicklists} active picklist${activePicklists === 1 ? "" : "s"}`,
       subtitle: "Open for picking / dispatch",
       href: "/app/picklists",
       icon: ClipboardList,
     });
   }
+  if ((pendingGatePasses ?? 0) > 0) {
+    tasks.push({
+      category: "reports",
+      title: `${pendingGatePasses} gate pass${pendingGatePasses === 1 ? "" : "es"} pending`,
+      subtitle: "Manager sign-off before load-out",
+      href: "/app/gate-passes",
+      icon: Truck,
+    });
+  }
   if ((pendingWriteOffs ?? 0) > 0) {
     tasks.push({
-      tone: "peach",
+      category: "stock",
       title: `${pendingWriteOffs} write-off${pendingWriteOffs === 1 ? "" : "s"} pending`,
       subtitle: "Awaiting admin / manager approval",
       href: "/app/write-offs",
@@ -244,16 +270,16 @@ export default async function DashboardPage() {
   }
   if (can(role, "approveUsers") && (pendingUsers ?? 0) > 0) {
     tasks.push({
-      tone: "purple",
+      category: "reports",
       title: `${pendingUsers} user${pendingUsers === 1 ? "" : "s"} awaiting approval`,
-      subtitle: "Assign a role to unlock portal access",
+      subtitle: "Assign a role to unlock access",
       href: "/app/admin/users",
       icon: UserCheck,
     });
   }
   if (tasks.length === 0) {
     tasks.push({
-      tone: "mint",
+      category: "reports",
       title: "All caught up",
       subtitle: "No pending approvals right now",
       href: "/app",
@@ -265,174 +291,254 @@ export default async function DashboardPage() {
     <div>
       <PageHeader title="Performance Summary" />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <StatCard
-          featured
-          label="Stock Value (posted)"
-          value={can(role, "viewFinancialStock") ? `Rs ${Math.round(stockValue).toLocaleString()}` : "Restricted"}
-          trend={can(role, "viewFinancialStock") ? "↑ Live" : undefined}
-        />
-        <StatCard
-          label="Collections MTD"
-          value={`Rs ${Math.round(collectionsMtd).toLocaleString()}`}
-          trend="This month"
-          href="/app/cash-collections"
-        />
-        <StatCard
-          label="Credit MTD"
-          value={`Rs ${Math.round(creditMtd).toLocaleString()}`}
-          trend={creditMtd ? "On credit" : "No credit"}
-          trendTone={creditMtd ? "warning" : "success"}
-          href="/app/cash-collections"
-        />
-        <StatCard
-          label="Open GRNs"
-          value={openGrns ?? 0}
-          trend={openGrns ? `${openGrns} pending finance` : "All posted"}
-          trendTone={openGrns ? "warning" : "success"}
-          href="/app/grn"
-        />
-        <StatCard
-          label="Active Picklists"
-          value={activePicklists ?? 0}
-          trend="In the pipeline"
-          href="/app/picklists"
-        />
-        <StatCard
-          label="Pending Approvals"
-          value={(pendingGatePasses ?? 0) + (pendingUsers ?? 0)}
-          trend={pendingGatePasses ? `${pendingGatePasses} gate pass` : "On hold: 0"}
-          trendTone={pendingGatePasses ? "warning" : "success"}
-          href="/app/gate-passes"
-        />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <ActivityChart series={series} unit="units dispatched" />
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-[var(--ink)]">Tasks &amp; Reports</h2>
-            <Link
-              href="/app/grn/new"
-              className="text-xs font-semibold text-[var(--brand)] hover:underline"
-            >
-              + New
-            </Link>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {/* STOCK */}
+        <DashSection
+          category="stock"
+          title="Stock"
+          hint="Inventory & inbound"
+          delay={40}
+        >
+          <div className="grid gap-2 sm:grid-cols-3">
+            <DashMetric
+              category="stock"
+              label="Stock value"
+              value={
+                can(role, "viewFinancialStock")
+                  ? money(stockValue)
+                  : "Restricted"
+              }
+              trend={can(role, "viewFinancialStock") ? "Posted balances" : "No access"}
+              icon={Boxes}
+              delay={80}
+            />
+            <DashMetric
+              category="stock"
+              label="Open GRNs"
+              value={openGrns ?? 0}
+              trend={openGrns ? "Pending finance" : "All posted"}
+              href="/app/grn"
+              icon={PackagePlus}
+              delay={120}
+            />
+            <DashMetric
+              category="stock"
+              label="Active picklists"
+              value={activePicklists ?? 0}
+              trend="In the pipeline"
+              href="/app/picklists"
+              icon={ClipboardList}
+              delay={160}
+            />
           </div>
-          <div className="mt-3 space-y-2">
-            {tasks.map((task, i) => {
-              const Icon = task.icon;
-              return (
-                <Link
-                  key={i}
+        </DashSection>
+
+        {/* SALE */}
+        <DashSection
+          category="sale"
+          title="Sale"
+          hint="Collections & dispatch"
+          delay={80}
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <DashMetric
+              category="sale"
+              label="Collected MTD"
+              value={money(saleCollectedMtd)}
+              trend="Cash / online / cheque"
+              href="/app/cash-collections"
+              icon={Wallet}
+              delay={120}
+            />
+            <DashMetric
+              category="sale"
+              label="Total collections MTD"
+              value={money(collectionsMtd)}
+              trend="Including credit lines"
+              href="/app/cash-collections"
+              icon={Wallet}
+              delay={160}
+            />
+          </div>
+        </DashSection>
+
+        {/* CREDIT */}
+        <DashSection
+          category="credit"
+          title="Credit"
+          hint="On-account this month"
+          delay={120}
+        >
+          <div className="grid gap-2 sm:grid-cols-[1.2fr_1fr]">
+            <DashMetric
+              category="credit"
+              label="Credit MTD"
+              value={money(creditMtd)}
+              trend={creditMtd ? "Recorded on credit" : "No credit this month"}
+              href="/app/sale-ledger"
+              icon={CreditCard}
+              delay={160}
+            />
+            <DashPanel category="credit" delay={200} className="flex flex-col justify-center">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
+                Share of collections
+              </p>
+              <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold text-[var(--dash-credit-fg)]">
+                {creditShare}%
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--dash-credit-bg)]">
+                <div
+                  className="h-full rounded-full bg-[var(--dash-credit-fg)] transition-all duration-700"
+                  style={{ width: `${Math.min(100, creditShare)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                Credit vs total collections MTD
+              </p>
+            </DashPanel>
+          </div>
+        </DashSection>
+
+        {/* REPORTS */}
+        <DashSection
+          category="reports"
+          title="Reports"
+          hint="Approvals & follow-ups"
+          delay={160}
+        >
+          <div className="grid gap-2 sm:grid-cols-[1fr_1.2fr]">
+            <DashMetric
+              category="reports"
+              label="Pending approvals"
+              value={pendingApprovals}
+              trend={
+                pendingGatePasses
+                  ? `${pendingGatePasses} gate pass`
+                  : "Nothing on hold"
+              }
+              href="/app/gate-passes"
+              icon={FileBarChart2}
+              delay={200}
+            />
+            <div className="space-y-1.5">
+              {tasks.slice(0, 3).map((task, i) => (
+                <DashTaskLink
+                  key={`${task.href}-${i}`}
+                  category={task.category}
+                  title={task.title}
+                  subtitle={task.subtitle}
                   href={task.href}
-                  className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition hover:brightness-[0.98]"
-                  style={{
-                    backgroundColor:
-                      task.tone === "purple"
-                        ? "var(--pill-purple-bg)"
-                        : task.tone === "blue"
-                          ? "var(--pill-blue-bg)"
-                          : task.tone === "mint"
-                            ? "var(--pill-mint-bg)"
-                            : "var(--pill-peach-bg)",
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={
-                        task.tone === "purple"
-                          ? "h-4 w-4 shrink-0 text-[var(--pill-purple-fg)]"
-                          : task.tone === "blue"
-                            ? "h-4 w-4 shrink-0 text-[var(--pill-blue-fg)]"
-                            : task.tone === "mint"
-                              ? "h-4 w-4 shrink-0 text-[var(--pill-mint-fg)]"
-                              : "h-4 w-4 shrink-0 text-[var(--pill-peach-fg)]"
-                      }
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--ink)]">{task.title}</p>
-                      <p className="text-xs text-[var(--ink-muted)]">{task.subtitle}</p>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-[var(--ink-muted)]" />
-                </Link>
-              );
-            })}
+                  icon={task.icon}
+                  delay={220 + i * 40}
+                />
+              ))}
+            </div>
           </div>
-        </Card>
+        </DashSection>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-[var(--ink)]">Recent Collections</h2>
-            <Link href="/app/cash-collections" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-              View all
-            </Link>
-          </div>
-          <div className="mt-3">
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Collection</Th>
-                  <Th>Customer</Th>
-                  <Th>Method</Th>
-                  <Th>Amount</Th>
-                  <Th>Status</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {collections.map((c) => {
-                  const total = c.cash_collection_payments.reduce((s, p) => s + Number(p.amount), 0);
-                  const methods = [...new Set(c.cash_collection_payments.map((p) => p.method))];
-                  const posted = Boolean(c.collected_at);
-                  return (
-                    <tr key={c.id}>
-                      <Td>
-                        <div className="flex items-center gap-2">
-                          <Avatar name={c.customer?.name ?? c.collection_no} size="sm" />
-                          <span className="font-medium">{c.collection_no}</span>
-                        </div>
-                      </Td>
-                      <Td className="text-[var(--ink-muted)]">{c.customer?.code ?? "—"}</Td>
-                      <Td className="capitalize text-[var(--ink-muted)]">{methods.join(", ") || "—"}</Td>
-                      <Td className="font-semibold">Rs {total.toLocaleString()}</Td>
-                      <Td>
-                        <Badge tone={posted ? "success" : "pending"}>
-                          {posted ? "Completed" : "Pending"}
-                        </Badge>
-                      </Td>
-                    </tr>
-                  );
-                })}
-                {collections.length === 0 ? (
-                  <tr>
-                    <Td colSpan={5} className="text-center text-[var(--ink-muted)]">
-                      No collections yet.
-                    </Td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </Table>
-          </div>
-        </Card>
+      {/* Sale deep dive */}
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1.35fr_1fr]">
+        <DashPanel category="sale" delay={240}>
+          <ActivityChart series={series} unit="units dispatched" />
+        </DashPanel>
 
-        <Card>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
-            Collections MTD
+        <DashPanel category="reports" delay={280}>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--dash-reports-fg)]">
+            This month
           </p>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--ink)]">
-            Rs {Math.round(mtdTotal).toLocaleString()}
+          <p className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--ink)]">
+            {money(collectionsMtd)}
           </p>
-          <div className="mt-4 border-t border-[var(--line)] pt-4">
+          <p className="text-xs text-[var(--ink-muted)]">Collections MTD overview</p>
+          <div className="mt-3 border-t border-[var(--line)] pt-3">
             <MiniCalendar />
           </div>
-        </Card>
+        </DashPanel>
       </div>
+
+      <DashSection
+        category="sale"
+        title="Recent collections"
+        hint="Latest receipts"
+        delay={300}
+        className="mt-3"
+      >
+        <div className="flex items-center justify-end">
+          <Link
+            href="/app/cash-collections"
+            className="text-xs font-medium text-[var(--dash-sale-fg)] hover:underline"
+          >
+            View all →
+          </Link>
+        </div>
+        <div className="mt-2 overflow-hidden rounded-xl border border-[var(--dash-sale-border)] bg-white/90">
+          <Table tableClassName="table-fixed">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[18%]" />
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+            </colgroup>
+            <thead>
+              <tr>
+                <Th className="text-left">Collection</Th>
+                <Th className="text-left">Customer</Th>
+                <Th className="text-left">Method</Th>
+                <Th className="text-right">Amount</Th>
+                <Th className="text-right">Status</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {collections.map((c) => {
+                const total = c.cash_collection_payments.reduce(
+                  (s, p) => s + Number(p.amount),
+                  0,
+                );
+                const methods = [
+                  ...new Set(c.cash_collection_payments.map((p) => p.method)),
+                ];
+                const posted = Boolean(c.collected_at);
+                return (
+                  <tr key={c.id}>
+                    <Td>
+                      <div className="flex items-center gap-2">
+                        <Avatar
+                          name={c.customer?.name ?? c.collection_no}
+                          size="sm"
+                        />
+                        <span className="font-medium">{c.collection_no}</span>
+                      </div>
+                    </Td>
+                    <Td className="text-[var(--ink-muted)]">
+                      {c.customer?.code ?? "—"}
+                    </Td>
+                    <Td className="capitalize text-[var(--ink-muted)]">
+                      {methods.join(", ") || "—"}
+                    </Td>
+                    <Td className="text-right font-medium tabular-nums">
+                      Rs {total.toLocaleString()}
+                    </Td>
+                    <Td className="text-right">
+                      <Badge tone={posted ? "success" : "pending"}>
+                        {posted ? "Completed" : "Pending"}
+                      </Badge>
+                    </Td>
+                  </tr>
+                );
+              })}
+              {collections.length === 0 ? (
+                <tr>
+                  <Td colSpan={5} className="text-center text-[var(--ink-muted)]">
+                    No collections yet.
+                  </Td>
+                </tr>
+              ) : null}
+            </tbody>
+          </Table>
+        </div>
+      </DashSection>
     </div>
   );
 }

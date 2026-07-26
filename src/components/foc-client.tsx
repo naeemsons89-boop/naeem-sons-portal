@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Label,
+  ListPanel,
+  ListRow,
+  statusTone,
+} from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type Sku = { id: string; product_code: string; description: string };
@@ -113,14 +123,14 @@ export function FocClient({
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Issue FOC / sampling</h2>
+    <div className="space-y-3">
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Issue FOC / sampling</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>Customer (optional)</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -135,7 +145,7 @@ export function FocClient({
           <div>
             <Label>Reason</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value)}
             >
@@ -173,7 +183,7 @@ export function FocClient({
           <div>
             <Label>Pickable batch (FEFO)</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={batchId}
               onChange={(e) => setBatchId(e.target.value)}
             >
@@ -213,33 +223,36 @@ export function FocClient({
         </Button>
       </Card>
 
-      <Card>
-        <h2 className="mb-2 font-semibold">Recent FOC</h2>
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.id as string}
-              className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-            >
-              <span className="flex items-center gap-2 font-medium">
-                {String(r.foc_no)}
-                <Badge tone={statusTone(String(r.status))} className="capitalize">
-                  {String(r.status)}
-                </Badge>
-              </span>
-              <a
-                className="font-semibold text-[var(--brand)]"
-                href={`/app/print/foc/${r.id}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Print
-              </a>
-            </div>
-          ))}
-        </div>
-        {rows.length === 0 ? <EmptyState>No FOC yet.</EmptyState> : null}
-      </Card>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Recent FOC</h2>
+        {rows.length === 0 ? (
+          <EmptyState>No FOC yet.</EmptyState>
+        ) : (
+          <ListPanel>
+            {rows.map((r) => (
+              <ListRow
+                key={r.id as string}
+                primary={String(r.foc_no)}
+                trailing={
+                  <>
+                    <Badge tone={statusTone(String(r.status))} className="capitalize">
+                      {String(r.status)}
+                    </Badge>
+                    <a
+                      className="text-xs font-medium text-[var(--brand)]"
+                      href={`/app/print/foc/${r.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Print
+                    </a>
+                  </>
+                }
+              />
+            ))}
+          </ListPanel>
+        )}
+      </div>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
     </div>

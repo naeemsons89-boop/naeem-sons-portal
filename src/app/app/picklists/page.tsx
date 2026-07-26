@@ -2,7 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DownloadReportBar } from "@/components/download-report-bar";
-import { Badge, Button, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ListPanel,
+  ListRow,
+  PageHeader,
+  statusTone,
+} from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { canTouchPicklist } from "@/lib/picklist-server";
@@ -51,34 +59,31 @@ export default async function PicklistsPage() {
           ) : null
         }
       />
-      <div className="space-y-3">
-        {picklists.map((p) => (
-          <Link key={p.id} href={`/app/picklists/${p.id}`}>
-            <Card className="mb-3 transition hover:border-[var(--brand)]">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-semibold">{p.picklist_no}</p>
-                  <p className="text-sm text-[var(--ink-muted)]">
-                    {p.warehouse?.code ?? "MAIN_WHS"} · {p.delivery_date}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
+      {picklists.length === 0 ? (
+        <EmptyState>
+          No picklists yet. Create one after finance-posted stock is available.
+        </EmptyState>
+      ) : (
+        <ListPanel>
+          {picklists.map((p) => (
+            <ListRow
+              key={p.id}
+              href={`/app/picklists/${p.id}`}
+              primary={p.picklist_no}
+              meta={`${p.warehouse?.code ?? "MAIN_WHS"} · ${p.delivery_date}`}
+              trailing={
+                <>
                   <Badge tone={statusTone(p.status)} className="capitalize">
                     {p.status}
                   </Badge>
                   {p.load_out_at ? <Badge tone="success">Out</Badge> : null}
                   {p.load_in_at ? <Badge tone="warning">In</Badge> : null}
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ))}
-        {picklists.length === 0 ? (
-          <EmptyState>
-            No picklists yet. Create one after finance-posted stock is available.
-          </EmptyState>
-        ) : null}
-      </div>
+                </>
+              }
+            />
+          ))}
+        </ListPanel>
+      )}
     </div>
   );
 }

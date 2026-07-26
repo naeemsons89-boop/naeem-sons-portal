@@ -139,7 +139,7 @@ export function DocumentSearch({
         aria-controls={listId}
         aria-expanded={open}
         className={cn(
-          "w-full rounded-full border border-[var(--line)] bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-[var(--brand)] placeholder:text-[var(--ink-muted)] focus:ring-2",
+          "w-full rounded-full border border-[var(--line)] bg-white py-2 pl-10 pr-4 text-sm outline-none ring-[var(--brand)] placeholder:text-[var(--ink-muted)] focus:ring-2",
           variant === "page" && "rounded-xl",
         )}
       />

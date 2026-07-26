@@ -16,7 +16,6 @@ import {
   Hammer,
   LayoutDashboard,
   LibraryBig,
-  LogOut,
   Menu,
   PackagePlus,
   RefreshCw,
@@ -32,9 +31,9 @@ import {
   X,
 } from "lucide-react";
 
-import { Avatar, Badge } from "@/components/ui";
 import { AppShellProvider } from "@/components/app-shell-context";
 import { DocumentSearch } from "@/components/document-search";
+import { UserProfileMenu } from "@/components/user-profile-menu";
 import { can } from "@/lib/permissions";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/client";
@@ -125,8 +124,8 @@ function NavLink({
       href={href}
       onClick={onNavigate}
       className={cn(
-        "flex items-center gap-3 rounded-xl text-sm font-semibold transition",
-        nested ? "px-3 py-2" : "px-3 py-2.5",
+        "flex items-center gap-3 rounded-xl text-sm font-medium transition",
+        nested ? "px-3 py-1.5" : "px-3 py-2",
         active
           ? "bg-white text-[var(--brand-ink)] shadow-sm"
           : "text-white/65 hover:bg-white/[0.06] hover:text-white",
@@ -159,7 +158,7 @@ function CollapsibleGroup({
         type="button"
         onClick={onToggle}
         className={cn(
-          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
+          "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
           childActive && !open
             ? "bg-white/10 text-white"
             : "text-white/65 hover:bg-white/[0.06] hover:text-white",
@@ -211,28 +210,32 @@ function SidebarNav({
   );
   const buildChildActive = buildItems.some((item) => isActive(pathname, item.href));
 
-  const [paymentOpen, setPaymentOpen] = useState(paymentChildActive);
-  const [warehouseOpen, setWarehouseOpen] = useState(warehouseChildActive);
-  const [movementsOpen, setMovementsOpen] = useState(movementsChildActive);
-  const [buildOpen, setBuildOpen] = useState(buildChildActive);
+  type NavGroup = "payment" | "warehouse" | "movements" | "build";
+
+  const routeGroup: NavGroup | null = paymentChildActive
+    ? "payment"
+    : warehouseChildActive
+      ? "warehouse"
+      : movementsChildActive
+        ? "movements"
+        : buildChildActive
+          ? "build"
+          : null;
+
+  const [openGroup, setOpenGroup] = useState<NavGroup | null>(routeGroup);
 
   useEffect(() => {
-    if (paymentChildActive) setPaymentOpen(true);
-  }, [paymentChildActive]);
-  useEffect(() => {
-    if (warehouseChildActive) setWarehouseOpen(true);
-  }, [warehouseChildActive]);
-  useEffect(() => {
-    if (movementsChildActive) setMovementsOpen(true);
-  }, [movementsChildActive]);
-  useEffect(() => {
-    if (buildChildActive) setBuildOpen(true);
-  }, [buildChildActive]);
+    if (routeGroup) setOpenGroup(routeGroup);
+  }, [routeGroup]);
+
+  function toggleGroup(group: NavGroup) {
+    setOpenGroup((prev) => (prev === group ? null : group));
+  }
 
   return (
     <nav className="flex-1 space-y-6 overflow-y-auto overscroll-contain">
       <div>
-        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
+        <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/35">
           Menu
         </p>
         <div className="space-y-1">
@@ -250,8 +253,8 @@ function SidebarNav({
           <CollapsibleGroup
             label="Payment"
             icon={Wallet}
-            open={paymentOpen}
-            onToggle={() => setPaymentOpen((o) => !o)}
+            open={openGroup === "payment"}
+            onToggle={() => toggleGroup("payment")}
             childActive={paymentChildActive}
           >
             {paymentItems.map((item) => (
@@ -270,8 +273,8 @@ function SidebarNav({
           <CollapsibleGroup
             label="Warehouse"
             icon={Warehouse}
-            open={warehouseOpen}
-            onToggle={() => setWarehouseOpen((o) => !o)}
+            open={openGroup === "warehouse"}
+            onToggle={() => toggleGroup("warehouse")}
             childActive={warehouseChildActive}
           >
             {warehouseItems.map((item) => (
@@ -290,8 +293,8 @@ function SidebarNav({
           <CollapsibleGroup
             label="Movements"
             icon={RefreshCw}
-            open={movementsOpen}
-            onToggle={() => setMovementsOpen((o) => !o)}
+            open={openGroup === "movements"}
+            onToggle={() => toggleGroup("movements")}
             childActive={movementsChildActive}
           >
             {movementsItems.map((item) => (
@@ -310,7 +313,7 @@ function SidebarNav({
       </div>
 
       <div>
-        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
+        <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/35">
           General
         </p>
         <div className="space-y-1">
@@ -318,8 +321,8 @@ function SidebarNav({
             <CollapsibleGroup
               label="Build"
               icon={Hammer}
-              open={buildOpen}
-              onToggle={() => setBuildOpen((o) => !o)}
+              open={openGroup === "build"}
+              onToggle={() => toggleGroup("build")}
               childActive={buildChildActive}
             >
               {buildItems.map((item) => (
@@ -405,10 +408,10 @@ export function AppShell({
         signOut,
       }}
     >
-    <div className="min-h-screen bg-[var(--background)] lg:flex lg:gap-4 lg:p-4">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:w-[264px] lg:shrink-0 lg:flex-col lg:rounded-3xl lg:bg-[var(--brand-ink)] lg:p-4 lg:shadow-[var(--shadow-panel)]">
-        <div className="flex items-center gap-2 px-2 py-2">
+    <div className="min-h-screen bg-[var(--background)] lg:flex lg:h-dvh lg:gap-4 lg:overflow-hidden lg:p-4">
+      {/* Desktop sidebar — fixed height; does not scroll with page content */}
+      <aside className="hidden lg:flex lg:h-full lg:w-[264px] lg:shrink-0 lg:flex-col lg:rounded-3xl lg:bg-[var(--brand-ink)] lg:p-4 lg:shadow-[var(--shadow-panel)]">
+        <div className="flex shrink-0 items-center gap-2 px-2 py-2">
           <Image
             src="/images/logo-mark.png"
             alt="Naeem & Sons logo"
@@ -424,35 +427,8 @@ export function AppShell({
           </div>
         </div>
 
-        <div className="mt-6 flex min-h-0 flex-1 flex-col">
+        <div className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden">
           <SidebarNav pathname={pathname} role={role} />
-        </div>
-
-        <Link
-          href="/app/profile"
-          className="mt-4 flex items-center gap-3 rounded-2xl bg-white/[0.06] p-3 transition hover:bg-white/[0.1]"
-        >
-          <Avatar src={profile.avatar_url} name={displayName} size="md" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-            <p className="truncate text-[11px] font-medium text-white/50">{roleLabel}</p>
-          </div>
-        </Link>
-        <div className="mt-2 flex items-center justify-between px-1">
-          <Link
-            href="/app/profile"
-            className="text-xs font-semibold text-white/70 hover:text-white"
-          >
-            View Profile &rarr;
-          </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            title="Sign out"
-            className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
         </div>
       </aside>
 
@@ -514,36 +490,10 @@ export function AppShell({
               onNavigate={() => setMobileOpen(false)}
             />
           </div>
-
-          <div className="mt-3 border-t border-white/10 pt-3">
-            <Link
-              href="/app/profile"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-3"
-            >
-              <Avatar
-                src={profile.avatar_url}
-                name={displayName}
-                size="sm"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-                <p className="truncate text-[11px] text-white/50">View profile</p>
-              </div>
-            </Link>
-            <button
-              type="button"
-              onClick={signOut}
-              className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/65 hover:bg-white/[0.06] hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-          </div>
         </aside>
       </div>
 
-      <div className="flex min-h-screen flex-1 flex-col lg:min-h-0">
+      <div className="flex min-h-screen flex-1 flex-col lg:h-full lg:min-h-0 lg:overflow-y-auto">
         {/* Mobile header */}
         <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface)]/95 px-3 py-2.5 backdrop-blur lg:hidden">
           <button
@@ -560,13 +510,7 @@ export function AppShell({
             </p>
             <p className="truncate text-[11px] text-[var(--ink-muted)]">{roleLabel}</p>
           </div>
-          <Link href="/app/profile" className="shrink-0" title={displayName}>
-            <Avatar
-              src={profile.avatar_url}
-              name={displayName}
-              size="sm"
-            />
-          </Link>
+          <UserProfileMenu />
         </header>
 
         <main className="flex-1 px-4 pb-24 pt-2 sm:px-6 lg:px-2 lg:pb-8 lg:pt-1">
@@ -584,7 +528,7 @@ export function AppShell({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold",
+                    "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium",
                     active ? "text-[var(--brand)]" : "text-[var(--ink-muted)]",
                   )}
                 >
@@ -597,7 +541,7 @@ export function AppShell({
               type="button"
               onClick={() => setMobileOpen(true)}
               className={cn(
-                "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold",
+                "flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-medium",
                 mobileOpen ? "text-[var(--brand)]" : "text-[var(--ink-muted)]",
               )}
             >

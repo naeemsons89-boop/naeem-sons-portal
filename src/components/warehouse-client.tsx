@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Button, Card, Input, Label, ListPanel, ListRow } from "@/components/ui";
 
 type Warehouse = {
   id: string;
@@ -81,52 +81,47 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
   const rackBins = bins.filter((b) => b.rack_id === selectedRack);
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Warehouses</h2>
-        <div className="space-y-2">
+    <div className="space-y-3">
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Warehouses</h2>
+        <ListPanel>
           {warehouses.map((w) => (
-            <button
+            <ListRow
               key={w.id}
-              type="button"
+              primary={`${w.code} — ${w.name}`}
+              meta={!w.is_active ? "Inactive" : w.address || undefined}
+              highlight={selectedWh === w.id}
               onClick={() => {
                 setSelectedWh(w.id);
                 setSelectedRack("");
               }}
-              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm ${
-                selectedWh === w.id
-                  ? "border-[var(--brand)] bg-[var(--brand-soft)]"
-                  : "border-[var(--line)]"
-              }`}
-            >
-              <span>
-                <strong>{w.code}</strong> — {w.name}
-                {!w.is_active ? " (inactive)" : ""}
-              </span>
-              {canManage ? (
-                <span
-                  className="text-xs font-semibold text-[var(--brand)]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void post({
-                      action: "toggle",
-                      toggle: {
-                        table: "warehouses",
-                        id: w.id,
-                        is_active: !w.is_active,
-                      },
-                    });
-                  }}
-                >
-                  {w.is_active ? "Disable" : "Enable"}
-                </span>
-              ) : null}
-            </button>
+              trailing={
+                canManage ? (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-[var(--brand)]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void post({
+                        action: "toggle",
+                        toggle: {
+                          table: "warehouses",
+                          id: w.id,
+                          is_active: !w.is_active,
+                        },
+                      });
+                    }}
+                  >
+                    {w.is_active ? "Disable" : "Enable"}
+                  </button>
+                ) : null
+              }
+            />
           ))}
-        </div>
+        </ListPanel>
         {canManage ? (
           <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--ink-muted)]">
+            <div className="rounded-xl bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--ink-muted)]">
               Code auto-generated (WH000001…).
             </div>
             <div>
@@ -152,32 +147,26 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
         ) : null}
       </Card>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Racks</h2>
-        <div className="space-y-2">
-          {whRacks.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setSelectedRack(r.id)}
-              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm ${
-                selectedRack === r.id
-                  ? "border-[var(--brand)] bg-[var(--brand-soft)]"
-                  : "border-[var(--line)]"
-              }`}
-            >
-              <span>
-                <strong>{r.code}</strong> {r.name ? `— ${r.name}` : ""}
-              </span>
-            </button>
-          ))}
-          {whRacks.length === 0 ? (
-            <p className="text-sm text-[var(--ink-muted)]">No racks in this warehouse.</p>
-          ) : null}
-        </div>
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Racks</h2>
+        {whRacks.length === 0 ? (
+          <p className="text-sm text-[var(--ink-muted)]">No racks in this warehouse.</p>
+        ) : (
+          <ListPanel>
+            {whRacks.map((r) => (
+              <ListRow
+                key={r.id}
+                primary={r.code}
+                meta={r.name || undefined}
+                highlight={selectedRack === r.id}
+                onClick={() => setSelectedRack(r.id)}
+              />
+            ))}
+          </ListPanel>
+        )}
         {canManage && selectedWh ? (
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-[var(--ink-muted)]">Rack code auto-generated (RK000001…).</p>
+            <p className="text-xs text-[var(--ink-muted)]">Rack code auto-generated (RK000001…).</p>
             <Button
               disabled={busy}
               onClick={() =>
@@ -193,23 +182,26 @@ export function WarehouseClient({ canManage }: { canManage: boolean }) {
         ) : null}
       </Card>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Bins</h2>
-        <ul className="space-y-1 text-sm">
-          {rackBins.map((b) => (
-            <li key={b.id}>
-              <strong>{b.code}</strong> {b.name ? `— ${b.name}` : ""}
-            </li>
-          ))}
-          {!selectedRack ? (
-            <li className="text-[var(--ink-muted)]">Select a rack first.</li>
-          ) : rackBins.length === 0 ? (
-            <li className="text-[var(--ink-muted)]">No bins on this rack.</li>
-          ) : null}
-        </ul>
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Bins</h2>
+        {!selectedRack ? (
+          <p className="text-sm text-[var(--ink-muted)]">Select a rack first.</p>
+        ) : rackBins.length === 0 ? (
+          <p className="text-sm text-[var(--ink-muted)]">No bins on this rack.</p>
+        ) : (
+          <ListPanel>
+            {rackBins.map((b) => (
+              <ListRow
+                key={b.id}
+                primary={b.code}
+                meta={b.name || undefined}
+              />
+            ))}
+          </ListPanel>
+        )}
         {canManage && selectedRack ? (
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-[var(--ink-muted)]">Bin code auto-generated (BN000001…).</p>
+            <p className="text-xs text-[var(--ink-muted)]">Bin code auto-generated (BN000001…).</p>
             <Button
               disabled={busy}
               onClick={() =>

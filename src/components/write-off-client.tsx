@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Label,
+  ListPanel,
+  ListRow,
+  statusTone,
+} from "@/components/ui";
 
 type Reason = { code: string; label: string };
 type StockRow = {
@@ -107,13 +117,13 @@ export function WriteOffClient({
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Destroy / write-off stock</h2>
+    <div className="space-y-3">
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Destroy / write-off stock</h2>
         <div>
           <Label>Reason</Label>
           <select
-            className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value)}
           >
@@ -130,7 +140,7 @@ export function WriteOffClient({
           onChange={(e) => setQ(e.target.value)}
         />
         <select
-          className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+          className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
           value={selectedKey}
           onChange={(e) => setSelectedKey(e.target.value)}
         >
@@ -182,33 +192,36 @@ export function WriteOffClient({
         </p>
       </Card>
 
-      <Card>
-        <h2 className="mb-2 font-semibold">Recent write-offs</h2>
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.id as string}
-              className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-            >
-              <span className="flex items-center gap-2 font-medium">
-                {String(r.write_off_no)}
-                <Badge tone={statusTone(String(r.status))} className="capitalize">
-                  {String(r.status)}
-                </Badge>
-              </span>
-              <a
-                className="font-semibold text-[var(--brand)]"
-                href={`/app/print/write-off/${r.id}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Print PDF
-              </a>
-            </div>
-          ))}
-        </div>
-        {rows.length === 0 ? <EmptyState>No write-offs yet.</EmptyState> : null}
-      </Card>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Recent write-offs</h2>
+        {rows.length === 0 ? (
+          <EmptyState>No write-offs yet.</EmptyState>
+        ) : (
+          <ListPanel>
+            {rows.map((r) => (
+              <ListRow
+                key={r.id as string}
+                primary={String(r.write_off_no)}
+                trailing={
+                  <>
+                    <Badge tone={statusTone(String(r.status))} className="capitalize">
+                      {String(r.status)}
+                    </Badge>
+                    <a
+                      className="text-xs font-medium text-[var(--brand)]"
+                      href={`/app/print/write-off/${r.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Print
+                    </a>
+                  </>
+                }
+              />
+            ))}
+          </ListPanel>
+        )}
+      </div>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
     </div>

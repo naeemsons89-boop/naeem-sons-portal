@@ -81,10 +81,10 @@ export function ActivityChart({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--ink-muted)]">
             Sales summary
           </p>
-          <p className="font-[family-name:var(--font-display)] text-xl font-bold text-[var(--ink)]">
+          <p className="font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--ink)]">
             {total.toLocaleString()} {unit}
           </p>
         </div>

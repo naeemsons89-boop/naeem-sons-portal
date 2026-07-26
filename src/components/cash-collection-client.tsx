@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from "react";
 
-import { Avatar, Badge, Button, Card, EmptyState, Input, Label } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Label,
+  ListPanel,
+  ListRow,
+} from "@/components/ui";
 
 type PicklistOpt = {
   id: string;
@@ -53,11 +62,11 @@ function money(n: number) {
 
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+    <div className="rounded-lg bg-[var(--surface-2)] px-3 py-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
         {label}
       </p>
-      <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">{value}</p>
+      <p className="mt-0.5 text-sm text-[var(--ink)]">{value}</p>
     </div>
   );
 }
@@ -143,14 +152,14 @@ export function CashCollectionClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Card>
-        <form onSubmit={submit} className="space-y-3">
-          <h2 className="font-semibold">New collection (linked to gate pass)</h2>
+        <form onSubmit={submit} className="space-y-2">
+          <h2 className="text-sm font-medium">New collection (linked to gate pass)</h2>
           <div>
             <Label>Picklist</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={picklistId}
               onChange={(e) => selectPicklist(e.target.value)}
               required
@@ -165,11 +174,11 @@ export function CashCollectionClient({
           </div>
 
           {selected ? (
-            <div className="space-y-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+            <div className="space-y-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2.5">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
                 From picklist / ledger
               </p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <InfoField
                   label="Gate pass"
                   value={selected.gate_pass.gate_pass_no}
@@ -184,8 +193,8 @@ export function CashCollectionClient({
                     }
                   />
                 ) : (
-                  <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2.5">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+                  <div className="rounded-lg bg-[var(--surface-2)] px-3 py-2">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
                       Customer
                     </p>
                     <select
@@ -221,7 +230,7 @@ export function CashCollectionClient({
               </p>
             </div>
           ) : (
-            <p className="rounded-xl bg-[var(--surface-2)] px-3.5 py-3 text-sm text-[var(--ink-muted)]">
+            <p className="rounded-xl bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--ink-muted)]">
               Select a picklist to load gate pass, customer, invoice, and balances.
             </p>
           )}
@@ -231,9 +240,9 @@ export function CashCollectionClient({
             <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Payments (cash / online / cheque / credit)</h3>
+              <h3 className="text-sm font-medium">Payments (cash / online / cheque / credit)</h3>
               <Button
                 type="button"
                 variant="secondary"
@@ -372,7 +381,7 @@ export function CashCollectionClient({
                 {payments.length > 1 ? (
                   <button
                     type="button"
-                    className="text-left text-xs font-semibold text-[var(--danger)]"
+                    className="text-left text-xs font-medium text-[var(--danger)]"
                     onClick={() =>
                       setPayments((prev) => prev.filter((x) => x.key !== p.key))
                     }
@@ -390,45 +399,41 @@ export function CashCollectionClient({
         </form>
       </Card>
 
-      <Card>
-        <h2 className="mb-2 font-semibold">Recent collections</h2>
-        <div className="space-y-2">
-          {rows.map((r) => {
-            const customer = r.customer as { code?: string; name?: string } | null;
-            const gp = r.gate_pass as { gate_pass_no?: string } | null;
-            return (
-              <div
-                key={r.id as string}
-                className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <Avatar name={customer?.name ?? String(r.collection_no)} size="sm" />
-                  <div>
-                    <p className="font-medium">{String(r.collection_no)}</p>
-                    <p className="text-xs text-[var(--ink-muted)]">
-                      {customer?.code} · GP {gp?.gate_pass_no}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge tone={r.collected_at ? "success" : "pending"}>
-                    {r.collected_at ? "Completed" : "Pending"}
-                  </Badge>
-                  <a
-                    className="font-semibold text-[var(--brand)]"
-                    href={`/app/print/cash-collection/${r.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Print
-                  </a>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {rows.length === 0 ? <EmptyState>No collections yet.</EmptyState> : null}
-      </Card>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Recent collections</h2>
+        {rows.length === 0 ? (
+          <EmptyState>No collections yet.</EmptyState>
+        ) : (
+          <ListPanel>
+            {rows.map((r) => {
+              const customer = r.customer as { code?: string; name?: string } | null;
+              const gp = r.gate_pass as { gate_pass_no?: string } | null;
+              return (
+                <ListRow
+                  key={r.id as string}
+                  primary={String(r.collection_no)}
+                  meta={`${customer?.code ?? ""} · GP ${gp?.gate_pass_no ?? "—"}`}
+                  trailing={
+                    <>
+                      <Badge tone={r.collected_at ? "success" : "pending"}>
+                        {r.collected_at ? "Completed" : "Pending"}
+                      </Badge>
+                      <a
+                        className="text-xs font-medium text-[var(--brand)]"
+                        href={`/app/print/cash-collection/${r.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Print
+                      </a>
+                    </>
+                  }
+                />
+              );
+            })}
+          </ListPanel>
+        )}
+      </div>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}

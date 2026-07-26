@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, ListPanel, ListRow, statusTone } from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type Sku = { id: string; product_code: string; description: string };
@@ -142,14 +142,14 @@ export function ReturnsClient({
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <h2 className="font-semibold">New customer return</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-3">
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">New customer return</h2>
+        <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <Label>Customer</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -163,7 +163,7 @@ export function ReturnsClient({
           <div>
             <Label>Reason</Label>
             <select
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value)}
             >
@@ -180,7 +180,7 @@ export function ReturnsClient({
           </div>
         </div>
 
-        <div className="rounded-lg border border-[var(--line)] p-3">
+        <div className="rounded-lg border border-[var(--line)] p-2.5">
           <Label>Search SKU</Label>
           <Input value={q} onChange={(e) => setQ(e.target.value)} className="mb-2" />
           {q ? (
@@ -213,7 +213,7 @@ export function ReturnsClient({
             <div>
               <Label>Condition</Label>
               <select
-                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
                 value={condition}
                 onChange={(e) =>
                   setCondition(e.target.value as "good" | "near_expiry" | "damaged")
@@ -271,46 +271,43 @@ export function ReturnsClient({
         </Button>
       </Card>
 
-      <Card>
-        <h2 className="mb-3 font-semibold">Recent returns</h2>
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.id}
-              className="flex flex-col gap-2 rounded-lg border border-[var(--line)] p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold">{r.return_no}</p>
-                  <Badge tone={statusTone(r.status)} className="capitalize">
-                    {r.status}
-                  </Badge>
-                  {r.requires_unknown_batch_approval ? (
-                    <Badge tone="warning">Needs approval</Badge>
-                  ) : null}
-                </div>
-                <p className="text-sm text-[var(--ink-muted)]">
-                  {r.customer?.code} — {r.customer?.name}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href={`/app/returns/${r.id}`}
-                  className="text-sm font-semibold text-[var(--brand)]"
-                >
-                  View
-                </Link>
-                {canApprove && r.requires_unknown_batch_approval ? (
-                  <Button size="sm" disabled={busy} onClick={() => void approve(r.id)}>
-                    Approve & post
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          ))}
-          {rows.length === 0 ? <EmptyState>No returns yet.</EmptyState> : null}
-        </div>
-      </Card>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Recent returns</h2>
+        {rows.length === 0 ? (
+          <EmptyState>No returns yet.</EmptyState>
+        ) : (
+          <ListPanel>
+            {rows.map((r) => (
+              <ListRow
+                key={r.id}
+                primary={r.return_no}
+                meta={`${r.customer?.code ?? ""} — ${r.customer?.name ?? ""}`}
+                trailing={
+                  <>
+                    <Badge tone={statusTone(r.status)} className="capitalize">
+                      {r.status}
+                    </Badge>
+                    {r.requires_unknown_batch_approval ? (
+                      <Badge tone="warning">Needs approval</Badge>
+                    ) : null}
+                    <Link
+                      href={`/app/returns/${r.id}`}
+                      className="text-xs font-medium text-[var(--brand)]"
+                    >
+                      View
+                    </Link>
+                    {canApprove && r.requires_unknown_batch_approval ? (
+                      <Button size="sm" disabled={busy} onClick={() => void approve(r.id)}>
+                        Approve & post
+                      </Button>
+                    ) : null}
+                  </>
+                }
+              />
+            ))}
+          </ListPanel>
+        )}
+      </div>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}

@@ -48,7 +48,7 @@ const CONDITIONS = [
 ] as const;
 
 const selectClass =
-  "w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm";
+  "w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm";
 
 type InventoryRow = {
   skuId: string;
@@ -167,8 +167,8 @@ export function StockClient({
   const inventoryCount = inventoryByCategory.reduce((n, [, items]) => n + items.length, 0);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
         <Button
           type="button"
           size="sm"
@@ -187,7 +187,7 @@ export function StockClient({
         </Button>
       </div>
 
-      <Card className="space-y-3">
+      <Card className="space-y-2">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
             <Label>Search</Label>
@@ -265,7 +265,7 @@ export function StockClient({
             <EmptyState>No stock yet. Create and post a GRN.</EmptyState>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {inventoryByCategory.map(([categoryName, items]) => {
               let sectionValue = 0;
               let sectionTotalQty = 0;
@@ -279,11 +279,11 @@ export function StockClient({
               }
 
               return (
-                <Card key={categoryName} className="space-y-3">
+                <Card key={categoryName} className="space-y-2">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--ink)]">
+                    <h2 className="text-sm font-medium text-[var(--ink)]">
                       {categoryName}
-                      <span className="ml-2 font-medium normal-case tracking-normal text-[var(--ink-muted)]">
+                      <span className="ml-2 text-xs font-normal text-[var(--ink-muted)]">
                         {items.length} SKU{items.length === 1 ? "" : "s"}
                       </span>
                     </h2>

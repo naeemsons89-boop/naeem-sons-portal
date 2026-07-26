@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from "react";
 
-import { Badge, Button, Card, EmptyState, Input, Label, statusTone } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Label,
+  ListPanel,
+  ListRow,
+  statusTone,
+} from "@/components/ui";
 
 type Customer = { id: string; code: string; name: string };
 type Sku = { id: string; product_code: string; description: string };
@@ -128,13 +138,13 @@ export function ExchangeClient({
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Product exchange</h2>
+    <div className="space-y-3">
+      <Card className="space-y-2">
+        <h2 className="text-sm font-medium">Product exchange</h2>
         <div>
           <Label>Customer</Label>
           <select
-            className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
           >
@@ -184,7 +194,7 @@ export function ExchangeClient({
             <div>
               <Label>Pickable batch</Label>
               <select
-                className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
                 value={batchId}
                 onChange={(e) => setBatchId(e.target.value)}
               >
@@ -209,7 +219,7 @@ export function ExchangeClient({
               <div>
                 <Label>Condition in</Label>
                 <select
-                  className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
+                  className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
                   value={condition}
                   onChange={(e) =>
                     setCondition(
@@ -250,23 +260,26 @@ export function ExchangeClient({
           {busy ? "Posting…" : "Post exchange"}
         </Button>
       </Card>
-      <Card>
-        <h2 className="mb-2 font-semibold">Recent exchanges</h2>
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div
-              key={r.id as string}
-              className="flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-medium"
-            >
-              {String(r.exchange_no)}
-              <Badge tone={statusTone(String(r.status))} className="capitalize">
-                {String(r.status)}
-              </Badge>
-            </div>
-          ))}
-        </div>
-        {rows.length === 0 ? <EmptyState>No exchanges yet.</EmptyState> : null}
-      </Card>
+      <div>
+        <h2 className="mb-2 text-sm font-medium">Recent exchanges</h2>
+        {rows.length === 0 ? (
+          <EmptyState>No exchanges yet.</EmptyState>
+        ) : (
+          <ListPanel>
+            {rows.map((r) => (
+              <ListRow
+                key={r.id as string}
+                primary={String(r.exchange_no)}
+                trailing={
+                  <Badge tone={statusTone(String(r.status))} className="capitalize">
+                    {String(r.status)}
+                  </Badge>
+                }
+              />
+            ))}
+          </ListPanel>
+        )}
+      </div>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
     </div>

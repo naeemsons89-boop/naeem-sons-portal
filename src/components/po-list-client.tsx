@@ -6,8 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Badge,
   Button,
-  Card,
   EmptyState,
+  ListPanel,
   SegmentedControl,
   statusTone,
   Table,
@@ -128,8 +128,8 @@ export function PoListClient({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SegmentedControl
           value={tab}
           onChange={(value) => {
@@ -151,149 +151,143 @@ export function PoListClient({
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {loading ? <p className="text-sm text-[var(--ink-muted)]">Loading…</p> : null}
 
-      <div className="space-y-3">
-        {rows.map((po) => {
-          const open = expandedId === po.id;
-          const hasRemaining =
-            (po.status === "pending" || po.status === "partial") &&
-            (po.lines ?? []).some((l) => remainingUnits(l) > 0);
+      {!loading && rows.length === 0 ? (
+        <EmptyState>
+          No {tab} purchase orders.
+          {canCreate ? " Create one to start receiving stock." : null}
+        </EmptyState>
+      ) : (
+        <ListPanel>
+          {rows.map((po) => {
+            const open = expandedId === po.id;
+            const hasRemaining =
+              (po.status === "pending" || po.status === "partial") &&
+              (po.lines ?? []).some((l) => remainingUnits(l) > 0);
 
-          return (
-            <Card
-              key={po.id}
-              className={`overflow-hidden p-0 transition ${
-                open ? "border-[var(--brand)]" : "hover:border-[var(--brand)]"
-              }`}
-            >
-              <button
-                type="button"
-                className="flex w-full items-start gap-3 px-4 py-3 text-left sm:items-center"
-                onClick={() => toggleExpand(po.id)}
-                aria-expanded={open}
-              >
-                <span
-                  className={`mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center text-[var(--ink-muted)] transition sm:mt-0 ${
-                    open ? "rotate-90" : ""
+            return (
+              <div key={po.id}>
+                <button
+                  type="button"
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-[var(--surface-2)]/80 sm:px-3.5 ${
+                    open ? "bg-[var(--brand-soft)]/30" : ""
                   }`}
-                  aria-hidden
+                  onClick={() => toggleExpand(po.id)}
+                  aria-expanded={open}
                 >
-                  ▸
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold">{po.po_no}</p>
-                      <p className="text-sm text-[var(--ink-muted)]">
-                        {po.supplier?.name ?? "Supplier"} · {po.order_date} ·{" "}
-                        {po.line_count} line{po.line_count === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:justify-end">
-                      <Badge tone={statusTone(po.status)}>{po.status}</Badge>
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatQtyByUom(po.qty_by_uom)}
-                      </span>
-                      <span className="text-sm font-semibold tabular-nums">
-                        {formatRs(po.total_amount)}
-                      </span>
+                  <span
+                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center text-xs text-[var(--ink-muted)] transition ${
+                      open ? "rotate-90" : ""
+                    }`}
+                    aria-hidden
+                  >
+                    ▸
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{po.po_no}</div>
+                    <div className="truncate text-xs text-[var(--ink-muted)] sm:text-sm">
+                      {po.supplier?.name ?? "Supplier"} · {po.order_date} ·{" "}
+                      {po.line_count} line{po.line_count === 1 ? "" : "s"}
                     </div>
                   </div>
-                </div>
-              </button>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    <Badge tone={statusTone(po.status)}>{po.status}</Badge>
+                    <span className="hidden text-xs tabular-nums text-[var(--ink-muted)] sm:inline">
+                      {formatQtyByUom(po.qty_by_uom)}
+                    </span>
+                    <span className="text-sm font-medium tabular-nums">
+                      {formatRs(po.total_amount)}
+                    </span>
+                  </div>
+                </button>
 
-              {open ? (
-                <div className="border-t border-[var(--line)] bg-[var(--surface-2)]/40 px-4 py-3">
-                  {(po.lines ?? []).length === 0 ? (
-                    <p className="text-sm text-[var(--ink-muted)]">No lines on this PO.</p>
-                  ) : (
-                    <Table>
-                      <thead>
-                        <tr>
-                          <Th>#</Th>
-                          <Th>Product</Th>
-                          <Th>Qty</Th>
-                          <Th>Received</Th>
-                          <Th>Price</Th>
-                          <Th>Amount</Th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(po.lines ?? []).map((line) => {
-                          const qty = Number(line.qty_ordered);
-                          return (
-                            <tr key={line.id}>
-                              <Td>{line.line_no}</Td>
-                              <Td>
-                                <div className="font-medium">
-                                  {line.sku?.product_code}
-                                </div>
-                                <div className="text-xs text-[var(--ink-muted)]">
-                                  {line.sku?.description}
-                                </div>
-                              </Td>
-                              <Td>
-                                {qty} {uomLabel(line.uom, qty)}
-                              </Td>
-                              <Td>
-                                {Number(line.qty_received_units)} /{" "}
-                                {Number(line.qty_ordered_units)} packs
-                              </Td>
-                              <Td className="tabular-nums">
-                                {formatRs(line.unit_price)}
-                              </Td>
-                              <Td className="tabular-nums">
-                                {formatRs(line.line_amount)}
-                              </Td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </Table>
-                  )}
+                {open ? (
+                  <div className="border-t border-[var(--line)] bg-[var(--surface-2)]/40 px-3 py-2 sm:px-3.5">
+                    {(po.lines ?? []).length === 0 ? (
+                      <p className="text-sm text-[var(--ink-muted)]">No lines on this PO.</p>
+                    ) : (
+                      <Table>
+                        <thead>
+                          <tr>
+                            <Th>#</Th>
+                            <Th>Product</Th>
+                            <Th>Qty</Th>
+                            <Th>Received</Th>
+                            <Th>Price</Th>
+                            <Th>Amount</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(po.lines ?? []).map((line) => {
+                            const qty = Number(line.qty_ordered);
+                            return (
+                              <tr key={line.id}>
+                                <Td>{line.line_no}</Td>
+                                <Td>
+                                  <div className="font-medium">
+                                    {line.sku?.product_code}
+                                  </div>
+                                  <div className="text-xs text-[var(--ink-muted)]">
+                                    {line.sku?.description}
+                                  </div>
+                                </Td>
+                                <Td>
+                                  {qty} {uomLabel(line.uom, qty)}
+                                </Td>
+                                <Td>
+                                  {Number(line.qty_received_units)} /{" "}
+                                  {Number(line.qty_ordered_units)} packs
+                                </Td>
+                                <Td className="tabular-nums">
+                                  {formatRs(line.unit_price)}
+                                </Td>
+                                <Td className="tabular-nums">
+                                  {formatRs(line.line_amount)}
+                                </Td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    )}
 
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                    <div className="text-sm">
-                      <span className="text-[var(--ink-muted)]">Total qty:</span>{" "}
-                      <strong>{formatQtyByUom(po.qty_by_uom)}</strong>
-                      <span className="mx-2 text-[var(--line)]">|</span>
-                      <span className="text-[var(--ink-muted)]">Amount:</span>{" "}
-                      <strong>{formatRs(po.total_amount)}</strong>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`/app/print/po/${po.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button type="button" variant="secondary" size="sm">
-                          Download PDF
-                        </Button>
-                      </a>
-                      {hasRemaining ? (
-                        <Link
-                          href={`/app/grn/new?po_id=${po.id}`}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--line)] pt-2">
+                      <div className="text-sm">
+                        <span className="text-[var(--ink-muted)]">Total qty:</span>{" "}
+                        <span className="font-medium">{formatQtyByUom(po.qty_by_uom)}</span>
+                        <span className="mx-2 text-[var(--line)]">|</span>
+                        <span className="text-[var(--ink-muted)]">Amount:</span>{" "}
+                        <span className="font-medium">{formatRs(po.total_amount)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={`/app/print/po/${po.id}`}
+                          target="_blank"
+                          rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Button type="button" size="sm">
-                            Create GRN
+                          <Button type="button" variant="secondary" size="sm">
+                            Download PDF
                           </Button>
-                        </Link>
-                      ) : null}
+                        </a>
+                        {hasRemaining ? (
+                          <Link
+                            href={`/app/grn/new?po_id=${po.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button type="button" size="sm">
+                              Create GRN
+                            </Button>
+                          </Link>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : null}
-            </Card>
-          );
-        })}
-        {!loading && rows.length === 0 ? (
-          <EmptyState>
-            No {tab} purchase orders.
-            {canCreate ? " Create one to start receiving stock." : null}
-          </EmptyState>
-        ) : null}
-      </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </ListPanel>
+      )}
     </div>
   );
 }

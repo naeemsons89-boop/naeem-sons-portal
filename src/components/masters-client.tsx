@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Button, Card, Input, Label, ListPanel, ListRow } from "@/components/ui";
 
 type Entity = "skus" | "customers" | "suppliers" | "categories";
 
@@ -262,8 +262,8 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
         {tabs.map((t) => (
           <Button
             key={t.id}
@@ -290,8 +290,8 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
       </Card>
 
       {canEdit ? (
-        <Card className="space-y-3">
-          <h2 className="font-semibold">{editId ? "Edit" : "Add new"}</h2>
+        <Card className="space-y-2">
+          <h2 className="text-sm font-medium">{editId ? "Edit" : "Add new"}</h2>
           {entity === "skus" ? (
             <div className="grid gap-2 sm:grid-cols-3">
               {editId ? (
@@ -503,7 +503,7 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
       {mapSkuId && entity === "skus" ? (
         <Card className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold">Supplier mapping</h2>
+            <h2 className="text-sm font-medium">Supplier mapping</h2>
             <Button type="button" size="sm" variant="ghost" onClick={() => setMapSkuId(null)}>
               Close
             </Button>
@@ -585,73 +585,73 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
         </Card>
       ) : null}
 
-      <Card className="space-y-2">
-        {rows.map((r) => (
-          <div
-            key={String(r.id)}
-            className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] py-2 text-sm last:border-0"
-          >
-            <div>
-              {entity === "skus" ? (
-                <>
-                  <strong>{String(r.product_code)}</strong> — {String(r.description)}
-                  {(r.category as { name?: string } | null)?.name ? (
-                    <span className="ml-2 text-xs text-[var(--ink-muted)]">
-                      [{String((r.category as { name?: string }).name)}]
-                    </span>
-                  ) : null}
-                  {r.barcode ? (
-                    <span className="ml-2 font-mono text-xs text-[var(--ink-muted)]">
-                      {String(r.barcode)}
-                    </span>
-                  ) : null}
-                  {!r.is_active ? " (inactive)" : ""}
-                </>
-              ) : entity === "categories" ? (
-                <>
-                  <strong>{String(r.name)}</strong>
-                  {!r.is_active ? " (inactive)" : ""}
-                </>
-              ) : (
-                <>
-                  <strong>{String(r.code || "—")}</strong> — {String(r.name)}
-                  {!r.is_active ? " (inactive)" : ""}
-                </>
-              )}
-            </div>
-            {canEdit ? (
-              <div className="flex gap-2">
-                {entity === "skus" ? (
-                  <button
-                    type="button"
-                    className="font-semibold text-[var(--brand)]"
-                    onClick={() => void openMap(String(r.id))}
-                  >
-                    Suppliers
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="font-semibold text-[var(--brand)]"
-                  onClick={() => startEdit(r)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="text-[var(--ink-muted)]"
-                  onClick={() => void toggle(String(r.id), !r.is_active)}
-                >
-                  {r.is_active ? "Disable" : "Enable"}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ))}
-        {rows.length === 0 ? (
-          <p className="text-sm text-[var(--ink-muted)]">No rows. Import CSV or add above.</p>
-        ) : null}
-      </Card>
+      {rows.length === 0 ? (
+        <p className="rounded-xl bg-[var(--surface-2)] px-4 py-4 text-center text-sm text-[var(--ink-muted)]">
+          No rows. Import CSV or add above.
+        </p>
+      ) : (
+        <ListPanel>
+          {rows.map((r) => {
+            const primary =
+              entity === "skus"
+                ? String(r.product_code)
+                : entity === "categories"
+                  ? String(r.name)
+                  : String(r.code || "—");
+            const meta =
+              entity === "skus"
+                ? `${String(r.description)}${
+                    (r.category as { name?: string } | null)?.name
+                      ? ` · ${String((r.category as { name?: string }).name)}`
+                      : ""
+                  }${r.barcode ? ` · ${String(r.barcode)}` : ""}${
+                    !r.is_active ? " · inactive" : ""
+                  }`
+                : entity === "categories"
+                  ? !r.is_active
+                    ? "Inactive"
+                    : undefined
+                  : `${String(r.name)}${!r.is_active ? " · inactive" : ""}`;
+
+            return (
+              <ListRow
+                key={String(r.id)}
+                primary={primary}
+                meta={meta}
+                trailing={
+                  canEdit ? (
+                    <>
+                      {entity === "skus" ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-[var(--brand)]"
+                          onClick={() => void openMap(String(r.id))}
+                        >
+                          Suppliers
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-[var(--brand)]"
+                        onClick={() => startEdit(r)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-[var(--ink-muted)]"
+                        onClick={() => void toggle(String(r.id), !r.is_active)}
+                      >
+                        {r.is_active ? "Disable" : "Enable"}
+                      </button>
+                    </>
+                  ) : null
+                }
+              />
+            );
+          })}
+        </ListPanel>
+      )}
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
     </div>

@@ -16,10 +16,10 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition disabled:opacity-50",
-        size === "sm" && "px-3.5 py-1.5 text-xs",
-        size === "md" && "px-4 py-2.5 text-sm",
-        size === "lg" && "px-6 py-3 text-base",
+        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition disabled:opacity-50",
+        size === "sm" && "px-3 py-1.5 text-xs",
+        size === "md" && "px-3.5 py-2 text-sm",
+        size === "lg" && "px-5 py-2.5 text-base",
         variant === "primary" &&
           "bg-[var(--brand-ink)] text-white shadow-sm hover:bg-[var(--brand-dark)]",
         variant === "secondary" &&
@@ -40,7 +40,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none ring-[var(--brand)] placeholder:text-[var(--ink-muted)] focus:ring-2",
+        "w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm text-[var(--ink)] outline-none ring-[var(--brand)] placeholder:text-[var(--ink-muted)] focus:ring-2",
         className,
       )}
       {...props}
@@ -54,7 +54,7 @@ export function Label({
 }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn("mb-1 block text-sm font-medium text-[var(--ink)]", className)}
+      className={cn("mb-0.5 block text-sm font-medium text-[var(--ink)]", className)}
       {...props}
     />
   );
@@ -70,7 +70,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]",
+        "rounded-xl border border-[var(--line)] bg-white p-3 shadow-[var(--shadow-card)] sm:p-4",
         className,
       )}
     >
@@ -139,7 +139,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
         pillToneClasses[tone],
         className,
       )}
@@ -218,7 +218,7 @@ export function SectionLabel({
   return (
     <p
       className={cn(
-        "px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ink-muted)]/70",
+        "px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--ink-muted)]/70",
         className,
       )}
     >
@@ -241,7 +241,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] p-1",
+        "inline-flex items-center gap-1 rounded-full bg-[var(--surface-2)] p-0.5",
         className,
       )}
     >
@@ -251,7 +251,7 @@ export function SegmentedControl<T extends string>({
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
-            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+            "rounded-full px-3 py-1 text-xs font-medium transition",
             value === opt.value
               ? "bg-[var(--brand-ink)] text-white shadow-sm"
               : "text-[var(--ink-muted)] hover:text-[var(--ink)]",
@@ -291,7 +291,7 @@ export function StatCard({
   const content = (
     <div
       className={cn(
-        "flex h-full flex-col justify-between gap-3 rounded-2xl p-5 shadow-[var(--shadow-card)]",
+        "flex h-full flex-col justify-between gap-2 rounded-xl p-3 shadow-[var(--shadow-card)] sm:p-4",
         featured
           ? "bg-[var(--brand-ink)] text-white"
           : "border border-[var(--line)] bg-white text-[var(--ink)]",
@@ -300,19 +300,19 @@ export function StatCard({
     >
       <p
         className={cn(
-          "text-[11px] font-bold uppercase tracking-wide",
+          "text-[11px] font-medium uppercase tracking-wide",
           featured ? "text-white/70" : "text-[var(--ink-muted)]",
         )}
       >
         {label}
       </p>
-      <p className="font-[family-name:var(--font-display)] text-2xl font-bold sm:text-[26px]">
+      <p className="font-[family-name:var(--font-display)] text-xl font-semibold sm:text-2xl">
         {value}
       </p>
       {trend ? (
         <span
           className={cn(
-            "inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
+            "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
             featured
               ? trendClasses
               : trendTone === "success"
@@ -340,14 +340,18 @@ export function StatCard({
 
 export function Table({
   className,
+  tableClassName,
   children,
 }: {
   className?: string;
+  tableClassName?: string;
   children: ReactNode;
 }) {
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table className="min-w-full text-left text-sm">{children}</table>
+      <table className={cn("w-full min-w-full text-left text-sm", tableClassName)}>
+        {children}
+      </table>
     </div>
   );
 }
@@ -360,7 +364,7 @@ export function Th({
   return (
     <th
       className={cn(
-        "border-b border-[var(--line)] py-2.5 pr-4 text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]",
+        "border-b border-[var(--line)] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)] first:pl-4 last:pr-4",
         className,
       )}
       {...props}
@@ -376,15 +380,102 @@ export function Td({
   ...props
 }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("border-b border-[var(--line)] py-3 pr-4", className)} {...props}>
+    <td
+      className={cn(
+        "border-b border-[var(--line)] px-3 py-2.5 first:pl-4 last:pr-4",
+        className,
+      )}
+      {...props}
+    >
       {children}
     </td>
   );
 }
 
+/** Compact list container — use instead of stacking one Card per record. */
+export function ListPanel({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border border-[var(--line)] bg-white divide-y divide-[var(--line)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** One compact row inside ListPanel: primary + muted meta + trailing badges/actions. */
+export function ListRow({
+  primary,
+  meta,
+  trailing,
+  href,
+  onClick,
+  className,
+  highlight,
+}: {
+  primary: ReactNode;
+  meta?: ReactNode;
+  trailing?: ReactNode;
+  href?: string;
+  onClick?: () => void;
+  className?: string;
+  highlight?: boolean;
+}) {
+  const mainClass = cn(
+    "min-w-0 flex-1 py-2",
+    (href || onClick) && "hover:text-[var(--ink)]",
+  );
+
+  const main = (
+    <div className={mainClass}>
+      <div className="truncate text-sm font-medium text-[var(--ink)]">{primary}</div>
+      {meta ? (
+        <div className="truncate text-xs text-[var(--ink-muted)] sm:text-sm">{meta}</div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 px-3 sm:px-3.5",
+        highlight && "bg-[var(--brand-soft)]/40",
+        (href || onClick) && "transition hover:bg-[var(--surface-2)]/80",
+        className,
+      )}
+    >
+      {href ? (
+        <Link href={href} className="min-w-0 flex-1">
+          {main}
+        </Link>
+      ) : onClick ? (
+        <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
+          {main}
+        </button>
+      ) : (
+        main
+      )}
+      {trailing ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 py-2">
+          {trailing}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-xl bg-[var(--surface-2)] px-4 py-6 text-center text-sm text-[var(--ink-muted)]">
+    <p className="rounded-xl bg-[var(--surface-2)] px-4 py-4 text-center text-sm text-[var(--ink-muted)]">
       {children}
     </p>
   );

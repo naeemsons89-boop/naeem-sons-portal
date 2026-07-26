@@ -14,7 +14,7 @@ export default function ScanPage() {
       <PageHeader
         title="Barcode scan"
       />
-      <Card className="space-y-4">
+      <Card className="space-y-3">
         <ScanField
           value={code}
           onChange={setCode}
@@ -29,11 +29,11 @@ export default function ScanPage() {
             }
           }}
         />
-        <div className="rounded-lg bg-[var(--surface-2)] px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+        <div className="rounded-lg bg-[var(--surface-2)] px-3 py-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--ink-muted)]">
             Lookup result
           </p>
-          <p className="mt-1 font-semibold">{result ?? "—"}</p>
+          <p className="mt-0.5 text-sm font-medium">{result ?? "—"}</p>
         </div>
       </Card>
     </div>

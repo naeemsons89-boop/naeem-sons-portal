@@ -117,7 +117,7 @@ export function ImportsClient() {
         </form>
       </Card>
       <Card className="space-y-3 text-sm text-[var(--ink-muted)]">
-        <p className="font-semibold text-[var(--ink)]">Expected columns</p>
+        <p className="text-sm font-medium text-[var(--ink)]">Expected columns</p>
         <div>
           <p className="font-medium text-[var(--ink)]">{format.label}</p>
           <p className="mt-1 font-mono text-xs break-all">

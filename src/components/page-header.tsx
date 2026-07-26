@@ -26,9 +26,16 @@ export function PageHeader({
   const inApp = Boolean(shell) && pathname?.startsWith("/app");
 
   return (
-    <div className={cn("mb-4", className)}>
+    <div
+      className={cn(
+        "sticky z-10 -mx-4 mb-3 border-b border-[var(--line)]/60 bg-[var(--background)]/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6",
+        // Sit below mobile shell header; pin to top of the desktop content scroller
+        "top-14 lg:top-0 lg:-mx-2 lg:px-2 lg:pt-1",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:gap-3">
-        <h1 className="shrink-0 font-[family-name:var(--font-display)] text-xl font-bold tracking-tight text-[var(--ink)] sm:text-2xl">
+        <h1 className="shrink-0 font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-[var(--ink)] sm:text-xl">
           {title}
         </h1>
         {inApp ? (

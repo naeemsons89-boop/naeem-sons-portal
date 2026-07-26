@@ -41,6 +41,20 @@
   --radius-xl: 24px;
   --shadow-card: 0 1px 2px rgba(20, 32, 28, 0.04), 0 10px 30px -12px rgba(20, 32, 28, 0.10);
   --shadow-panel: 0 20px 60px -20px rgba(13, 31, 25, 0.35);
+
+  /* Dashboard category tones (light washes) */
+  --dash-stock-bg: #e7f3ec;
+  --dash-stock-fg: #0f6b4c;
+  --dash-stock-border: #c5e2d3;
+  --dash-sale-bg: #e7f1f5;
+  --dash-sale-fg: #1a5f7a;
+  --dash-sale-border: #c5dae4;
+  --dash-credit-bg: #f8efe4;
+  --dash-credit-fg: #a65d1e;
+  --dash-credit-border: #ead7c0;
+  --dash-reports-bg: #eef0ea;
+  --dash-reports-fg: #3d4f45;
+  --dash-reports-border: #d5dacf;
 }
 
 @theme inline {
@@ -136,4 +150,46 @@ body {
 
 .animate-pulse-ring {
   animation: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Dashboard metric tiles */
+.dash-tile {
+  animation: fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, box-shadow;
+}
+
+.dash-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -14px rgba(20, 32, 28, 0.22);
+}
+
+.dash-tile-stock:hover {
+  border-color: var(--dash-stock-fg);
+  box-shadow: 0 12px 28px -14px rgba(15, 107, 76, 0.28);
+}
+
+.dash-tile-sale:hover {
+  border-color: var(--dash-sale-fg);
+  box-shadow: 0 12px 28px -14px rgba(26, 95, 122, 0.28);
+}
+
+.dash-tile-credit:hover {
+  border-color: var(--dash-credit-fg);
+  box-shadow: 0 12px 28px -14px rgba(166, 93, 30, 0.28);
+}
+
+.dash-tile-reports:hover {
+  border-color: var(--dash-reports-fg);
+  box-shadow: 0 12px 28px -14px rgba(61, 79, 69, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-tile,
+  .dash-section,
+  .animate-fade-up {
+    animation: none !important;
+  }
+  .dash-tile:hover {
+    transform: none;
+  }
 }

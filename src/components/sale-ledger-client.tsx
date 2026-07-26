@@ -110,8 +110,8 @@ export function SaleLedgerClient({
   const selected = customers.find((c) => c.customer_id === selectedId);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-      <Card className="space-y-3">
+    <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
+      <Card className="space-y-2">
         <div>
           <Label>Search customer</Label>
           <Input
@@ -120,13 +120,13 @@ export function SaleLedgerClient({
             placeholder="Code or name"
           />
         </div>
-        <div className="max-h-[70vh] space-y-1 overflow-y-auto">
+        <div className="max-h-[70vh] space-y-0.5 overflow-y-auto">
           {customers.map((c) => (
             <button
               key={c.customer_id}
               type="button"
               onClick={() => setSelectedId(c.customer_id)}
-              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm transition ${
                 selectedId === c.customer_id
                   ? "bg-[var(--brand)]/10 text-[var(--brand)]"
                   : "hover:bg-[var(--surface-2)]"
@@ -139,7 +139,7 @@ export function SaleLedgerClient({
                   <p className="text-xs text-[var(--ink-muted)]">{c.code}</p>
                 </div>
               </div>
-              <span className="shrink-0 text-xs font-semibold tabular-nums">
+              <span className="shrink-0 text-xs font-medium tabular-nums">
                 {money(Number(c.outstanding))}
               </span>
             </button>
@@ -150,16 +150,16 @@ export function SaleLedgerClient({
 
       <Card>
         {selected ? (
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <div>
-              <h2 className="text-lg font-semibold">{selected.name}</h2>
+              <h2 className="text-base font-medium">{selected.name}</h2>
               <p className="text-sm text-[var(--ink-muted)]">{selected.code}</p>
             </div>
-            <div className="rounded-xl bg-[var(--surface-2)] px-3.5 py-2 text-right">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
+            <div className="rounded-lg bg-[var(--surface-2)] px-3 py-1.5 text-right">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
                 Outstanding
               </p>
-              <p className="text-lg font-semibold tabular-nums">{money(outstanding)}</p>
+              <p className="text-base font-medium tabular-nums">{money(outstanding)}</p>
             </div>
           </div>
         ) : (
@@ -172,13 +172,13 @@ export function SaleLedgerClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[var(--line)] text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">
-                  <th className="py-2 pr-3">Date</th>
-                  <th className="py-2 pr-3">Type</th>
-                  <th className="py-2 pr-3">Ref</th>
-                  <th className="py-2 pr-3 text-right">Debit</th>
-                  <th className="py-2 pr-3 text-right">Credit</th>
-                  <th className="py-2 text-right">Balance</th>
+                <tr className="border-b border-[var(--line)] text-[11px] font-medium uppercase tracking-wide text-[var(--ink-muted)]">
+                  <th className="py-1.5 pr-3">Date</th>
+                  <th className="py-1.5 pr-3">Type</th>
+                  <th className="py-1.5 pr-3">Ref</th>
+                  <th className="py-1.5 pr-3 text-right">Debit</th>
+                  <th className="py-1.5 pr-3 text-right">Credit</th>
+                  <th className="py-1.5 text-right">Balance</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,10 +201,10 @@ export function SaleLedgerClient({
 
                   return (
                     <tr key={e.id} className="border-b border-[var(--line)]/70">
-                      <td className="py-2.5 pr-3 whitespace-nowrap text-[var(--ink-muted)]">
+                      <td className="py-2 pr-3 whitespace-nowrap text-[var(--ink-muted)]">
                         {new Date(e.created_at).toLocaleString()}
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="py-2 pr-3">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <Badge tone={entryTone(e.entry_type)}>{entryLabel(e)}</Badge>
                           {!e.affects_balance ? (
@@ -214,16 +214,16 @@ export function SaleLedgerClient({
                           ) : null}
                         </div>
                       </td>
-                      <td className="py-2.5 pr-3 text-xs text-[var(--ink-muted)]">
+                      <td className="py-2 pr-3 text-xs text-[var(--ink-muted)]">
                         {refs.join(" · ") || "—"}
                       </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                      <td className="py-2 pr-3 text-right tabular-nums">
                         {debit ? money(debit) : "—"}
                       </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                      <td className="py-2 pr-3 text-right tabular-nums">
                         {credit ? money(credit) : "—"}
                       </td>
-                      <td className="py-2.5 text-right font-medium tabular-nums">
+                      <td className="py-2 text-right font-medium tabular-nums">
                         {e.affects_balance ? money(e.running_balance) : "—"}
                       </td>
                     </tr>

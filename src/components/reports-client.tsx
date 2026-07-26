@@ -217,8 +217,8 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-xl">
           <p className="text-sm text-[var(--ink-muted)]">
             Download deep-detail CSVs for every portal dataset. Each file includes linked
@@ -241,16 +241,16 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
         const items = visible.filter((r) => r.group === group);
         if (!items.length) return null;
         return (
-          <section key={group} className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+          <section key={group} className="space-y-2">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-[var(--ink-muted)]">
               {group}
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((report) => (
-                <Card key={report.id} className="flex flex-col gap-3">
+                <Card key={report.id} className="flex flex-col gap-2">
                   <div>
-                    <h3 className="font-semibold text-[var(--ink)]">{report.title}</h3>
-                    <p className="mt-1 text-sm text-[var(--ink-muted)]">{report.description}</p>
+                    <h3 className="text-sm font-medium text-[var(--ink)]">{report.title}</h3>
+                    <p className="mt-0.5 text-xs text-[var(--ink-muted)]">{report.description}</p>
                   </div>
 
                   {report.needsDates ? (
