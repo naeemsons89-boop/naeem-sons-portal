@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { WriteOffClient } from "@/components/write-off-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -11,7 +11,8 @@ import type { AppRole } from "@/types/database";
 
 export default async function WriteOffsPage() {
   const { profile } = await getSessionProfile();
-  if (!can(profile?.role as AppRole, "writeOff")) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!can(role, "writeOff")) redirect("/app");
 
   const supabase = await createClient();
   const admin = createServiceClient();
@@ -52,11 +53,13 @@ export default async function WriteOffsPage() {
     <div>
       <PageHeader
         title="Write-off / Destroy"
-        description="Remove expired or damaged stock with audit trail. Fixed auto numbers: WO000001…"
+        download={
+          <DownloadReportBar
+            reportType="write_offs"
+            canExport={can(role, "exportPdfCsv")}
+          />
+        }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="write_off" variant="page" />
-      </div>
       <WriteOffClient
         reasons={(reasons ?? []) as { code: string; label: string }[]}
         stock={stock}

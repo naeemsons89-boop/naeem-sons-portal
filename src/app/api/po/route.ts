@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("purchase_orders")
     .select(
-      "id,po_no,order_date,expected_date,status,remarks,created_at,supplier:suppliers(id,code,name),warehouse:warehouses(id,code,name),lines:purchase_order_lines(id,line_amount,qty_ordered_units,qty_received_units)",
+      "id,po_no,order_date,expected_date,status,remarks,created_at,supplier:suppliers(id,code,name),warehouse:warehouses(id,code,name),lines:purchase_order_lines(id,line_no,uom,qty_ordered,qty_ordered_units,qty_received_units,unit_price,line_amount,sku:skus(product_code,description))",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -50,10 +50,25 @@ export async function GET(request: Request) {
     created_at: string;
     supplier: { id?: string; code?: string; name?: string } | null;
     warehouse: { id?: string; code?: string; name?: string } | null;
-    lines: { line_amount?: number; qty_ordered_units?: number; qty_received_units?: number }[] | null;
+    lines: {
+      id: string;
+      line_no: number;
+      uom: string;
+      qty_ordered: number;
+      qty_ordered_units: number;
+      qty_received_units: number;
+      unit_price: number;
+      line_amount: number;
+      sku: { product_code?: string; description?: string } | null;
+    }[] | null;
   }>).map((po) => {
-    const lines = po.lines ?? [];
+    const lines = [...(po.lines ?? [])].sort((a, b) => a.line_no - b.line_no);
     const total = lines.reduce((s, l) => s + Number(l.line_amount ?? 0), 0);
+    const qtyByUom: Record<string, number> = {};
+    for (const l of lines) {
+      const uom = (l.uom || "pack").toLowerCase();
+      qtyByUom[uom] = (qtyByUom[uom] ?? 0) + Number(l.qty_ordered ?? 0);
+    }
     return {
       id: po.id,
       po_no: po.po_no,
@@ -66,6 +81,8 @@ export async function GET(request: Request) {
       warehouse: po.warehouse,
       line_count: lines.length,
       total_amount: total,
+      qty_by_uom: qtyByUom,
+      lines,
     };
   });
 

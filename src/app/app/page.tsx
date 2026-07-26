@@ -97,6 +97,9 @@ export default async function DashboardPage() {
   const yearAgo = new Date();
   yearAgo.setDate(yearAgo.getDate() - 370);
 
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthStartIso = monthStart.toISOString().slice(0, 10);
+
   const [
     { count: pendingUsers },
     { count: openGrns },
@@ -105,6 +108,7 @@ export default async function DashboardPage() {
     { count: pendingWriteOffs },
     movementsRes,
     collectionsRes,
+    mtdPaymentsRes,
     stockRes,
   ] = await Promise.all([
     can(role, "approveUsers")
@@ -132,6 +136,13 @@ export default async function DashboardPage() {
       )
       .order("created_at", { ascending: false })
       .limit(6),
+    supabase
+      .from("cash_collections")
+      .select("collected_at,created_at,cash_collection_payments(amount,method)")
+      .or(
+        `collected_at.gte.${monthStartIso},created_at.gte.${monthStart.toISOString()}`,
+      )
+      .limit(2000),
     can(role, "viewFinancialStock")
       ? supabase
           .from("stock_balances")
@@ -160,16 +171,23 @@ export default async function DashboardPage() {
     cash_collection_payments: Array<{ amount: number; method: string }>;
   }>;
 
+  const mtdCollections = (mtdPaymentsRes.data ?? []) as Array<{
+    collected_at: string | null;
+    created_at: string;
+    cash_collection_payments: Array<{ amount: number; method: string }>;
+  }>;
   const now = new Date();
-  const mtdTotal = collections
+  const mtdPayments = mtdCollections
     .filter((c) => {
       const d = new Date(c.collected_at ?? c.created_at);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     })
-    .reduce(
-      (sum, c) => sum + c.cash_collection_payments.reduce((s, p) => s + Number(p.amount), 0),
-      0,
-    );
+    .flatMap((c) => c.cash_collection_payments ?? []);
+  const collectionsMtd = mtdPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const creditMtd = mtdPayments
+    .filter((p) => p.method === "credit")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const mtdTotal = collectionsMtd;
 
   const stockRows = (stockRes.data ?? []) as Array<{
     qty_units: number;
@@ -210,7 +228,7 @@ export default async function DashboardPage() {
     tasks.push({
       tone: "mint",
       title: `${activePicklists} active picklist${activePicklists === 1 ? "" : "s"}`,
-      subtitle: "FEFO pick → gate pass → load-in",
+      subtitle: "Open for picking / dispatch",
       href: "/app/picklists",
       icon: ClipboardList,
     });
@@ -245,33 +263,27 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Performance Summary"
-        description={`Welcome back${profile?.full_name ? `, ${profile.full_name}` : ""}. Warehouse ops for Naeem & Sons.`}
-        actions={
-          <>
-            <Link
-              href="/app/grn/new"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-ink)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--brand-dark)]"
-            >
-              + New GRN
-            </Link>
-            <Link
-              href="/app/admin/imports"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-2)]"
-            >
-              Import Data
-            </Link>
-          </>
-        }
-      />
+      <PageHeader title="Performance Summary" />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           featured
           label="Stock Value (posted)"
           value={can(role, "viewFinancialStock") ? `Rs ${Math.round(stockValue).toLocaleString()}` : "Restricted"}
           trend={can(role, "viewFinancialStock") ? "↑ Live" : undefined}
+        />
+        <StatCard
+          label="Collections MTD"
+          value={`Rs ${Math.round(collectionsMtd).toLocaleString()}`}
+          trend="This month"
+          href="/app/cash-collections"
+        />
+        <StatCard
+          label="Credit MTD"
+          value={`Rs ${Math.round(creditMtd).toLocaleString()}`}
+          trend={creditMtd ? "On credit" : "No credit"}
+          trendTone={creditMtd ? "warning" : "success"}
+          href="/app/cash-collections"
         />
         <StatCard
           label="Open GRNs"

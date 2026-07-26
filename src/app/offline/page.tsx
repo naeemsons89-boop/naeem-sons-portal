@@ -6,7 +6,6 @@ export default function OfflinePage() {
       <div className="w-full">
         <PageHeader
           title="You're offline"
-          description="Naeem & Sons Portal needs a connection for live stock and documents."
         />
         <Card>
           <p className="text-sm text-[var(--ink-muted)]">

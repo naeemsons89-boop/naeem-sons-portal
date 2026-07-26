@@ -34,7 +34,6 @@ export default async function NewPoPage() {
     <div>
       <PageHeader
         title="New purchase order"
-        description="Pick a supplier, search any SKU, set qty / UOM / price, then create the PO."
       />
       <PoCreateForm
         suppliers={

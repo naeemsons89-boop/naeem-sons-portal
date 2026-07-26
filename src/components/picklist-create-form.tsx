@@ -12,21 +12,33 @@ type Sku = {
   description: string;
   packs_per_carton: number;
   barcode: string | null;
+  sale_price_pack: number | null;
 };
 
-type LineDraft = { key: string; sku_id: string; qty_cases: string; qty_units: string };
+type LineDraft = {
+  key: string;
+  sku_id: string;
+  qty_cases: string;
+  qty_units: string;
+  sale_price: string;
+};
 type CustomerDraft = {
   key: string;
   mode: "existing" | "new";
   customer_id: string;
   customer_code: string;
   customer_name: string;
-  invoice_no: string;
   lines: LineDraft[];
 };
 
-function emptyLine(): LineDraft {
-  return { key: crypto.randomUUID(), sku_id: "", qty_cases: "1", qty_units: "0" };
+function emptyLine(salePrice = ""): LineDraft {
+  return {
+    key: crypto.randomUUID(),
+    sku_id: "",
+    qty_cases: "1",
+    qty_units: "0",
+    sale_price: salePrice,
+  };
 }
 
 function emptyCustomer(): CustomerDraft {
@@ -36,7 +48,6 @@ function emptyCustomer(): CustomerDraft {
     customer_id: "",
     customer_code: "",
     customer_name: "",
-    invoice_no: "",
     lines: [emptyLine()],
   };
 }
@@ -74,6 +85,9 @@ export function PicklistCreateForm({
   }, [skuQuery, skus]);
 
   function addSkuToActive(skuId: string) {
+    const sku = skus.find((s) => s.id === skuId);
+    const defaultPrice =
+      sku?.sale_price_pack != null ? String(sku.sale_price_pack) : "";
     setBlocks((prev) =>
       prev.map((b, idx) => {
         if (idx !== activeBlock) return b;
@@ -81,7 +95,7 @@ export function PicklistCreateForm({
           ...b,
           lines: [
             ...b.lines.filter((l) => l.sku_id),
-            { ...emptyLine(), sku_id: skuId, qty_cases: "1" },
+            { ...emptyLine(defaultPrice), sku_id: skuId, qty_cases: "1" },
           ],
         };
       }),
@@ -94,11 +108,26 @@ export function PicklistCreateForm({
     setLoading(true);
     setError(null);
 
+    for (const [bIdx, b] of blocks.entries()) {
+      const lines = b.lines.filter((l) => l.sku_id);
+      if (!lines.length) {
+        setLoading(false);
+        setError(`Customer ${bIdx + 1}: add at least one SKU`);
+        return;
+      }
+      for (const l of lines) {
+        if (l.sale_price === "" || Number.isNaN(Number(l.sale_price)) || Number(l.sale_price) < 0) {
+          setLoading(false);
+          setError(`Customer ${bIdx + 1}: enter selling price for all SKUs`);
+          return;
+        }
+      }
+    }
+
     const payloadCustomers = blocks.map((b) => ({
       customer_id: b.mode === "existing" ? b.customer_id : undefined,
       customer_code: b.mode === "new" ? b.customer_code : undefined,
       customer_name: b.mode === "new" ? b.customer_name : undefined,
-      invoice_no: b.invoice_no || undefined,
       lines: b.lines
         .filter((l) => l.sku_id)
         .map((l) => {
@@ -106,7 +135,11 @@ export function PicklistCreateForm({
           const ppc = sku?.packs_per_carton || 1;
           const units =
             Number(l.qty_cases || 0) * ppc + Number(l.qty_units || 0);
-          return { sku_id: l.sku_id, qty_ordered_units: units };
+          return {
+            sku_id: l.sku_id,
+            qty_ordered_units: units,
+            sale_price_pack: Number(l.sale_price),
+          };
         }),
     }));
 
@@ -269,7 +302,7 @@ export function PicklistCreateForm({
                 }
                 required
               >
-                <option value="">Choose…</option>
+                <option value="">Choose...</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.code} — {c.name}
@@ -282,15 +315,10 @@ export function PicklistCreateForm({
           <div>
             <Label>Invoice no</Label>
             <Input
-              value={block.invoice_no}
-              onChange={(e) =>
-                setBlocks((prev) =>
-                  prev.map((b, i) =>
-                    i === bIdx ? { ...b, invoice_no: e.target.value } : b,
-                  ),
-                )
-              }
-              placeholder="INES26034930"
+              value="Auto-generated on save"
+              readOnly
+              tabIndex={-1}
+              className="cursor-default bg-[var(--surface-2)] text-[var(--ink-muted)] focus:ring-0"
             />
           </div>
 
@@ -300,7 +328,7 @@ export function PicklistCreateForm({
             onClick={() => setActiveBlock(bIdx)}
           >
             {activeBlock === bIdx
-              ? "Adding SKUs to this customer ↓"
+              ? "Adding SKUs to this customer ?"
               : "Click to add SKUs to this customer"}
           </button>
 
@@ -312,7 +340,7 @@ export function PicklistCreateForm({
                 return (
                   <div
                     key={line.key}
-                    className="grid gap-2 rounded-lg border border-[var(--line)] p-2 sm:grid-cols-4"
+                    className="grid gap-2 rounded-lg border border-[var(--line)] p-2 sm:grid-cols-5"
                   >
                     <div className="sm:col-span-2 text-sm">
                       <p className="font-semibold">{sku?.product_code}</p>
@@ -368,6 +396,32 @@ export function PicklistCreateForm({
                         }
                       />
                     </div>
+                    <div>
+                      <Label>Selling price (Rs / pack)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                        value={line.sale_price}
+                        onChange={(e) =>
+                          setBlocks((prev) =>
+                            prev.map((b, i) =>
+                              i === bIdx
+                                ? {
+                                    ...b,
+                                    lines: b.lines.map((l) =>
+                                      l.key === line.key
+                                        ? { ...l, sale_price: e.target.value }
+                                        : l,
+                                    ),
+                                  }
+                                : b,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -394,6 +448,12 @@ export function PicklistCreateForm({
                 onClick={() => addSkuToActive(s.id)}
               >
                 <strong>{s.product_code}</strong> — {s.description}
+                {s.sale_price_pack != null ? (
+                  <span className="text-[var(--ink-muted)]">
+                    {" "}
+                    · Rs {Number(s.sale_price_pack).toFixed(2)}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -409,7 +469,7 @@ export function PicklistCreateForm({
           Add customer
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Creating…" : "Create picklist with FEFO"}
+          {loading ? "Creating..." : "Create picklist with FEFO"}
         </Button>
       </div>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}

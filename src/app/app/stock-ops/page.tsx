@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { StockOpsClient } from "@/components/stock-ops-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -10,7 +11,8 @@ import type { AppRole } from "@/types/database";
 
 export default async function StockOpsPage() {
   const { profile } = await getSessionProfile();
-  if (!can(profile?.role as AppRole, "writeOff")) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!can(role, "writeOff")) redirect("/app");
 
   const supabase = await createClient();
   const admin = createServiceClient();
@@ -45,7 +47,14 @@ export default async function StockOpsPage() {
     <div>
       <PageHeader
         title="Adjust / Transfer"
-        description="Correct stock quantities or move stock between warehouses. Admin / Manager only."
+        download={
+          <DownloadReportBar
+            reportType="movements"
+            documentType="adjustment,transfer"
+            canExport={can(role, "exportPdfCsv")}
+            title="Download report"
+          />
+        }
       />
       <StockOpsClient
         stock={stock}

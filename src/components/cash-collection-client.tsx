@@ -14,7 +14,7 @@ type GatePassOpt = {
 
 type PayRow = {
   key: string;
-  method: "cash" | "online" | "cheque";
+  method: "cash" | "online" | "cheque" | "credit";
   amount: string;
   cheque_no: string;
   bank_name: string;
@@ -185,7 +185,7 @@ export function CashCollectionClient({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Payments (cash / online / cheque)</h3>
+              <h3 className="font-semibold">Payments (cash / online / cheque / credit)</h3>
               <Button
                 type="button"
                 variant="secondary"
@@ -221,6 +221,7 @@ export function CashCollectionClient({
                     <option value="cash">Cash</option>
                     <option value="online">Online</option>
                     <option value="cheque">Cheque</option>
+                    <option value="credit">Credit</option>
                   </select>
                 </div>
                 <div>

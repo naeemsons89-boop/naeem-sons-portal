@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { User } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -78,29 +79,7 @@ export function Card({
   );
 }
 
-export function PageHeader({
-  title,
-  description,
-  actions,
-}: {
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-}) {
-  return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--ink)] sm:text-[28px]">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 text-sm text-[var(--ink-muted)]">{description}</p>
-        ) : null}
-      </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-    </div>
-  );
-}
+export { PageHeader } from "@/components/page-header";
 
 export function TextLink({
   href,
@@ -191,24 +170,24 @@ export function Avatar({
   src?: string | null;
   name?: string | null;
   size?: "sm" | "md" | "lg";
+  /** @deprecated Ignored — avatar shows photo or person icon only */
+  showFullName?: boolean;
   className?: string;
 }) {
-  const initials = (name ?? "?")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("") || "?";
+  const label = (name ?? "?").trim() || "?";
 
   const sizeClasses =
     size === "sm" ? "h-8 w-8 text-xs" : size === "lg" ? "h-14 w-14 text-lg" : "h-10 w-10 text-sm";
+  const iconClasses =
+    size === "sm" ? "h-4 w-4" : size === "lg" ? "h-7 w-7" : "h-5 w-5";
 
   if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
-        alt={name ?? "Avatar"}
+        alt={label}
+        title={label}
         className={cn("rounded-full object-cover", sizeClasses, className)}
       />
     );
@@ -216,13 +195,15 @@ export function Avatar({
 
   return (
     <div
+      title={label}
+      aria-label={label}
       className={cn(
-        "flex items-center justify-center rounded-full bg-[var(--brand-soft)] font-bold text-[var(--brand-dark)]",
+        "flex items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-dark)]",
         sizeClasses,
         className,
       )}
     >
-      {initials}
+      <User className={iconClasses} strokeWidth={2} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { CashCollectionClient } from "@/components/cash-collection-client";
-import { DocumentSearch } from "@/components/document-search";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -44,11 +43,7 @@ export default async function CashCollectionsPage() {
     <div>
       <PageHeader
         title="Cash collection"
-        description="Link to unique gate pass. Fixed auto numbers: CC000001…"
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="cash_collection" variant="page" />
-      </div>
       <CashCollectionClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         picklists={

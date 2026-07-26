@@ -40,7 +40,6 @@ export default async function GrnDetailPage({ params }: Props) {
     <div>
       <PageHeader
         title={grn.grn_no as string}
-        description={`DN ${(grn.supplier_delivery_no as string) || "—"} · ${grn.delivery_date as string}`}
       />
       <GrnDetailClient
         grn={grn as Record<string, unknown>}

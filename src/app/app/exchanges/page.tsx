@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { ExchangeClient } from "@/components/exchange-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -10,7 +10,8 @@ import type { AppRole } from "@/types/database";
 
 export default async function ExchangesPage() {
   const { profile } = await getSessionProfile();
-  if (!can(profile?.role as AppRole, "focExchange")) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!can(role, "focExchange")) redirect("/app");
 
   const supabase = await createClient();
   const [{ data: customers }, { data: skus }, { data: exchanges }, { data: wh }] =
@@ -31,18 +32,20 @@ export default async function ExchangesPage() {
     ]);
 
   if (!wh?.id) {
-    return <PageHeader title="Exchange" description="MAIN_WHS missing" />;
+    return <PageHeader title="Exchange" />;
   }
 
   return (
     <div>
       <PageHeader
         title="Exchange"
-        description="OUT uses pickable stock. IN returns by condition. Fixed auto numbers: EX000001…"
+        download={
+          <DownloadReportBar
+            reportType="exchanges"
+            canExport={can(role, "exportPdfCsv")}
+          />
+        }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="exchange" variant="page" />
-      </div>
       <ExchangeClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}

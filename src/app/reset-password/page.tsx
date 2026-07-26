@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { PasswordStrength } from "@/components/password-strength";
 import { Button, Card, Input, Label, TextLink } from "@/components/ui";
+import { checkPassword, passwordsMatch } from "@/lib/password";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -20,8 +22,6 @@ export default function ResetPasswordPage() {
     const supabase = createClient();
 
     async function init() {
-      // PKCE: /auth/callback already exchanged the code.
-      // Implicit/hash (older links): pick up tokens from URL hash if present.
       if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
         const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const access_token = params.get("access_token");
@@ -46,14 +46,17 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+
+    const strength = checkPassword(password);
+    if (!strength.ok) {
+      setError(strength.message);
       return;
     }
-    if (password !== confirm) {
+    if (!passwordsMatch(password, confirm)) {
       setError("Passwords do not match");
       return;
     }
+
     setLoading(true);
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
@@ -105,6 +108,7 @@ export default function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <PasswordStrength password={password} />
             </div>
             <div>
               <Label htmlFor="confirm">Confirm password</Label>

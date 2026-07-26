@@ -30,6 +30,48 @@ export async function GET(request: Request) {
   const like = `%${safe}%`;
 
   async function searchOne(s: DocScope) {
+    if (s === "po" || s === "all") {
+      const { data: byNo } = await supabase
+        .from("purchase_orders")
+        .select("id,po_no,order_date,status,supplier:suppliers(code,name)")
+        .ilike("po_no", like)
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      const { data: matchedSuppliers } = await supabase
+        .from("suppliers")
+        .select("id")
+        .or(`code.ilike.${like},name.ilike.${like}`)
+        .limit(20);
+      const supplierIds = (matchedSuppliers ?? []).map((row) => row.id as string);
+
+      let bySupplier: typeof byNo = [];
+      if (supplierIds.length) {
+        const { data } = await supabase
+          .from("purchase_orders")
+          .select("id,po_no,order_date,status,supplier:suppliers(code,name)")
+          .in("supplier_id", supplierIds)
+          .order("created_at", { ascending: false })
+          .limit(8);
+        bySupplier = data ?? [];
+      }
+
+      const seen = new Set<string>();
+      for (const row of [...(byNo ?? []), ...bySupplier]) {
+        const id = row.id as string;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const supplier = row.supplier as { code?: string; name?: string } | null;
+        results.push({
+          type: "po",
+          id,
+          number: String(row.po_no),
+          label: `PO · ${supplier?.name ?? "Supplier"} · ${row.order_date} · ${row.status}`,
+          href: `/app/po?po_id=${id}`,
+        });
+      }
+    }
+
     if (s === "grn" || s === "all") {
       const { data } = await supabase
         .from("grns")

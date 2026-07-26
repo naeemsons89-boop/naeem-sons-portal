@@ -18,5 +18,15 @@ export async function getSessionProfile(): Promise<{
     .eq("id", user.id)
     .maybeSingle();
 
-  return { userId: user.id, profile: (data as Profile | null) ?? null };
+  let profile = (data as Profile | null) ?? null;
+
+  // Prefer live auth email until DB sync trigger has run.
+  if (profile && user.email) {
+    const authEmail = user.email.toLowerCase();
+    if (profile.email !== authEmail) {
+      profile = { ...profile, email: authEmail };
+    }
+  }
+
+  return { userId: user.id, profile };
 }

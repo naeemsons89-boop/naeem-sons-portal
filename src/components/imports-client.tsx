@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import * as XLSX from "xlsx";
+import { Download } from "lucide-react";
 
 import { Button, Card, Label } from "@/components/ui";
-
-type ImportKind = "skus" | "opening_stock" | "customer_openings";
+import {
+  IMPORT_FORMATS,
+  type ImportKind,
+} from "@/lib/import-formats";
 
 export function ImportsClient() {
   const [kind, setKind] = useState<ImportKind>("skus");
@@ -13,10 +17,24 @@ export function ImportsClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const format = IMPORT_FORMATS[kind];
+
+  function downloadTemplate() {
+    const rows = [format.columns];
+    if (format.sample) rows.push(format.sample);
+    const sheet = XLSX.utils.aoa_to_sheet(rows);
+    sheet["!cols"] = format.columns.map((col) => ({
+      wch: Math.max(col.length + 2, 14),
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Template");
+    XLSX.writeFile(workbook, format.fileName);
+  }
+
   async function onUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!file) {
-      setError("Choose a CSV file first");
+      setError("Choose an Excel or CSV file first");
       return;
     }
     setLoading(true);
@@ -46,53 +64,71 @@ export function ImportsClient() {
               id="kind"
               className="w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm"
               value={kind}
-              onChange={(e) => setKind(e.target.value as ImportKind)}
+              onChange={(e) => {
+                setKind(e.target.value as ImportKind);
+                setFile(null);
+                setError(null);
+                setMessage(null);
+              }}
             >
               <option value="skus">SKU / price list</option>
               <option value="opening_stock">Opening inventory + pricing</option>
               <option value="customer_openings">Customer opening balances</option>
             </select>
           </div>
+
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3">
+            <p className="text-sm font-medium text-[var(--ink)]">
+              Step 1 — Download format
+            </p>
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">
+              Download the Excel template for <span className="font-medium text-[var(--ink)]">{format.label}</span>, fill in your data, then upload it below.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-3"
+              onClick={downloadTemplate}
+            >
+              <Download className="size-3.5" />
+              Download Excel format
+            </Button>
+          </div>
+
           <div>
-            <Label htmlFor="file">CSV file</Label>
+            <Label htmlFor="file">Step 2 — Upload filled file</Label>
             <input
               id="file"
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
               className="block w-full text-sm"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">
+              Accepts Excel (.xlsx / .xls) or CSV
+            </p>
           </div>
           {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
           {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
           <Button type="submit" disabled={loading}>
-            {loading ? "Uploading…" : "Upload CSV"}
+            {loading ? "Uploading…" : "Upload file"}
           </Button>
         </form>
       </Card>
       <Card className="space-y-3 text-sm text-[var(--ink-muted)]">
-        <p className="font-semibold text-[var(--ink)]">CSV formats</p>
+        <p className="font-semibold text-[var(--ink)]">Expected columns</p>
         <div>
-          <p className="font-medium text-[var(--ink)]">SKU / price list</p>
-          <p className="font-mono text-xs">
-            product_code,description,barcode,packs_per_carton,gm_per_pack,price_point,purchase_price_pack,sale_price_pack,purchase_price_ctn,sale_price_ctn,default_shelf_life_days,brand
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-[var(--ink)]">Opening inventory</p>
-          <p className="font-mono text-xs">
-            product_code,batch_code,mfg_date,expiry_date,qty_units,condition,purchase_price_pack,warehouse_code,bin_code
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-[var(--ink)]">Customer openings</p>
-          <p className="font-mono text-xs">
-            customer_code,customer_name,address,phone,opening_balance,route_code
+          <p className="font-medium text-[var(--ink)]">{format.label}</p>
+          <p className="mt-1 font-mono text-xs break-all">
+            {format.columns.join(", ")}
           </p>
         </div>
         <p>
-          Your Excel price list (`PriceList2026.xlsx`) can be saved as CSV and
-          uploaded here. Mapping for that sheet is included in the API.
+          Use <span className="font-medium text-[var(--ink)]">Download Excel format</span> after
+          choosing an import type. Keep the header row unchanged. You can delete the sample row
+          before uploading. Existing Excel price lists (e.g. `PriceList2026.xlsx`) can also be
+          uploaded directly for SKUs.
         </p>
       </Card>
     </div>

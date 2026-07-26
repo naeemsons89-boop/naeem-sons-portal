@@ -13,7 +13,6 @@ export default function ScanPage() {
     <div>
       <PageHeader
         title="Barcode scan"
-        description="Camera scan on Android/iPhone, or Bluetooth scanner as keyboard input. Use Cam on GRN and picklist lines too."
       />
       <Card className="space-y-4">
         <ScanField

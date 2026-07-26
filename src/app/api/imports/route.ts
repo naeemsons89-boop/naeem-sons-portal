@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as XLSX from "xlsx";
 
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -47,6 +48,43 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
+function parseSpreadsheet(buffer: ArrayBuffer): string[][] {
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return [];
+  const sheet = workbook.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json<(string | number | boolean | Date | null)[]>(
+    sheet,
+    {
+      header: 1,
+      defval: "",
+      raw: false,
+    },
+  );
+  return raw
+    .map((row) =>
+      row.map((cell) => {
+        if (cell == null) return "";
+        if (cell instanceof Date) {
+          return cell.toISOString().slice(0, 10);
+        }
+        return String(cell).trim();
+      }),
+    )
+    .filter((row) => row.some((c) => c.length > 0));
+}
+
+function isExcelFile(file: File) {
+  const name = file.name.toLowerCase();
+  return (
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    name.endsWith(".xlsm") ||
+    file.type.includes("spreadsheet") ||
+    file.type.includes("excel")
+  );
+}
+
 function num(v: string | undefined) {
   if (v == null || v === "") return null;
   const n = Number(v);
@@ -66,10 +104,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing file" }, { status: 400 });
   }
 
-  const text = await file.text();
-  const rows = parseCsv(text.replace(/^\uFEFF/, ""));
+  let rows: string[][];
+  if (isExcelFile(file)) {
+    rows = parseSpreadsheet(await file.arrayBuffer());
+  } else {
+    const text = await file.text();
+    rows = parseCsv(text.replace(/^\uFEFF/, ""));
+  }
   if (rows.length < 2) {
-    return NextResponse.json({ error: "CSV has no data rows" }, { status: 400 });
+    return NextResponse.json(
+      { error: "File has no data rows (header + at least one data row required)" },
+      { status: 400 },
+    );
   }
 
   const header = rows[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));

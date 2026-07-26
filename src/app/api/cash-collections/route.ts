@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const paymentsRaw = String(form.get("payments") ?? "[]");
 
   let payments: Array<{
-    method: "cash" | "online" | "cheque";
+    method: "cash" | "online" | "cheque" | "credit";
     amount: number;
     cheque_no?: string;
     bank_name?: string;
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
   try {
     for (let i = 0; i < payments.length; i++) {
       const p = payments[i];
-      if (!["cash", "online", "cheque"].includes(p.method)) {
+      if (!["cash", "online", "cheque", "credit"].includes(p.method)) {
         throw new Error(`Invalid payment method on line ${i + 1}`);
       }
       if (Number(p.amount) < 0) throw new Error("Amount cannot be negative");

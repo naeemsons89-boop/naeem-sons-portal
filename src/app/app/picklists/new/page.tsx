@@ -21,7 +21,7 @@ export default async function NewPicklistPage() {
       .limit(300),
     supabase
       .from("skus")
-      .select("id,product_code,description,packs_per_carton,barcode")
+      .select("id,product_code,description,packs_per_carton,barcode,sale_price_pack")
       .eq("is_active", true)
       .order("product_code")
       .limit(500),
@@ -31,7 +31,6 @@ export default async function NewPicklistPage() {
     <div>
       <PageHeader
         title="New picklist"
-        description="Add route + customers + SKU qtys. FEFO batches are suggested automatically from pickable stock."
       />
       <PicklistCreateForm
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
@@ -42,6 +41,7 @@ export default async function NewPicklistPage() {
             description: string;
             packs_per_carton: number;
             barcode: string | null;
+            sale_price_pack: number | null;
           }[]
         }
       />

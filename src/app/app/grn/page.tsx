@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { canTouchGrn } from "@/lib/grn-server";
+import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/database";
 
 export default async function GrnListPage() {
   const { profile } = await getSessionProfile();
-  if (!canTouchGrn(profile?.role as AppRole)) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!canTouchGrn(role)) redirect("/app");
 
   const supabase = await createClient();
   const { data: grnsRaw } = await supabase
@@ -38,16 +40,15 @@ export default async function GrnListPage() {
     <div>
       <PageHeader
         title="GRN Inward"
-        description="Receive against a purchase order. QC then physical receive moves stock to warehouse."
+        download={
+          <DownloadReportBar reportType="grn" canExport={can(role, "exportPdfCsv")} />
+        }
         actions={
           <Link href="/app/grn/new">
             <Button>New GRN</Button>
           </Link>
         }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="grn" variant="page" />
-      </div>
 
       <div className="space-y-3">
         {grns.map((g) => {

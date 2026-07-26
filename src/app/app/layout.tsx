@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 
+import { signOutAction } from "@/app/auth/actions";
 import { AppShell } from "@/components/app-shell";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/auth-paths";
 
 export default async function AppLayout({
   children,
@@ -13,6 +16,12 @@ export default async function AppLayout({
 
   if (!userId) {
     redirect("/login");
+  }
+
+  const supabase = await createClient();
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+    redirect(`/mfa?next=${encodeURIComponent(safeNextPath("/app"))}`);
   }
 
   if (!profile || profile.status === "pending") {
@@ -30,6 +39,11 @@ export default async function AppLayout({
               ? ` Reason: ${profile.rejection_reason}`
               : " Contact Admin."}
           </p>
+          <form action={signOutAction} className="mt-6">
+            <Button type="submit" variant="secondary">
+              Sign out
+            </Button>
+          </form>
         </Card>
       </main>
     );

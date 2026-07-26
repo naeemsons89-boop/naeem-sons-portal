@@ -265,14 +265,10 @@ export function GrnCreateForm({
                   <Label>Receive qty (units)</Label>
                   <Input
                     type="number"
-                    min="0.001"
-                    max={line.remaining_units}
-                    step="0.001"
                     value={line.qty_units}
-                    onChange={(e) =>
-                      updateLine(line.po_line_id, { qty_units: e.target.value })
-                    }
-                    required
+                    readOnly
+                    tabIndex={-1}
+                    className="cursor-default bg-[var(--surface-2)] text-[var(--ink-muted)] focus:ring-0"
                   />
                 </div>
                 <div>

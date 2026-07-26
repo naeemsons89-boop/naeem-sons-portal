@@ -43,6 +43,7 @@ type CreateBody = {
       sku_id: string;
       qty_ordered_units: number;
       qty_foc_units?: number;
+      sale_price_pack?: number | null;
     }>;
   }>;
 };
@@ -134,12 +135,14 @@ export async function POST(request: Request) {
         customerId = cust.id;
       }
 
+      const invoiceNo = await nextDocNo(admin, "invoice", "INV");
+
       const { data: pc, error: pcError } = await admin
         .from("picklist_customers")
         .insert({
           picklist_id: picklist.id,
           customer_id: customerId,
-          invoice_no: c.invoice_no || null,
+          invoice_no: invoiceNo,
           sequence_no: i + 1,
         })
         .select("id")
@@ -160,6 +163,16 @@ export async function POST(request: Request) {
           .maybeSingle();
         if (!sku) throw new Error(`Unknown SKU on line ${lineNo}`);
 
+        const salePrice =
+          line.sale_price_pack != null && !Number.isNaN(Number(line.sale_price_pack))
+            ? Number(line.sale_price_pack)
+            : sku.sale_price_pack != null
+              ? Number(sku.sale_price_pack)
+              : null;
+        if (salePrice == null || salePrice < 0) {
+          throw new Error(`Line ${lineNo}: selling price is required`);
+        }
+
         const suggested = await suggestFefoBatch(admin, warehouseId, line.sku_id, qty);
 
         const { error: lineError } = await admin.from("picklist_lines").insert({
@@ -171,11 +184,8 @@ export async function POST(request: Request) {
           qty_ordered_units: qty,
           qty_foc_units: Number(line.qty_foc_units || 0),
           qty_picked_units: 0,
-          sale_price_pack: sku.sale_price_pack,
-          line_sale_amount:
-            sku.sale_price_pack != null
-              ? Number(sku.sale_price_pack) * qty
-              : null,
+          sale_price_pack: salePrice,
+          line_sale_amount: Number((salePrice * qty).toFixed(2)),
         });
         if (lineError) throw new Error(lineError.message);
       }

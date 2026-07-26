@@ -349,15 +349,19 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
                 />
               </div>
               <div>
-                <Label>Packs / carton</Label>
+                <Label>Packs per carton (case)</Label>
                 <Input
                   type="number"
+                  min="1"
                   value={form.packs_per_carton ?? "1"}
                   onChange={(e) => setForm((f) => ({ ...f, packs_per_carton: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-[var(--ink-muted)]">
+                  How many packs are inside one carton/case
+                </p>
               </div>
               <div>
-                <Label>Purchase / pack</Label>
+                <Label>Purchase price (Rs per pack)</Label>
                 <Input
                   value={form.purchase_price_pack ?? ""}
                   onChange={(e) =>
@@ -366,14 +370,14 @@ export function MastersClient({ canEdit }: { canEdit: boolean }) {
                 />
               </div>
               <div>
-                <Label>Sale / pack</Label>
+                <Label>Selling price (Rs per pack)</Label>
                 <Input
                   value={form.sale_price_pack ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, sale_price_pack: e.target.value }))}
                 />
               </div>
               <div>
-                <Label>Shelf life (days)</Label>
+                <Label>Default shelf life (days)</Label>
                 <Input
                   value={form.default_shelf_life_days ?? ""}
                   onChange={(e) =>

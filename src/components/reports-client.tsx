@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button, Card, Input, Label } from "@/components/ui";
 
@@ -12,25 +12,34 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
   const [to, setTo] = useState("");
   const [q, setQ] = useState("");
   const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [dataTab, setDataTab] = useState<Tab | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
 
   const load = useCallback(async () => {
+    const requested = tab;
     setBusy(true);
     setError(null);
-    const params = new URLSearchParams({ type: tab });
+    setData(null);
+    setDataTab(null);
+    const params = new URLSearchParams({ type: requested });
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (q) params.set("q", q);
     const res = await fetch(`/api/reports?${params}`);
     const json = await res.json();
+    if (requested !== tabRef.current) return;
     setBusy(false);
     if (!res.ok) {
       setError(json.error ?? "Failed");
       setData(null);
+      setDataTab(null);
       return;
     }
     setData(json);
+    setDataTab(requested);
   }, [tab, from, to, q]);
 
   useEffect(() => {
@@ -52,6 +61,8 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
     { id: "recall", label: "Batch recall" },
     { id: "sales", label: "Sales" },
   ];
+
+  const showForTab = Boolean(data && dataTab === tab);
 
   return (
     <div className="space-y-4">
@@ -112,15 +123,16 @@ export function ReportsClient({ canExport }: { canExport: boolean }) {
       </Card>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {busy ? <p className="text-sm text-[var(--ink-muted)]">Loading…</p> : null}
 
-      {tab === "stock" && data?.rows ? (
+      {showForTab && tab === "stock" && data?.rows ? (
         <StockTable data={data} />
       ) : null}
-      {tab === "movements" && data?.rows ? (
+      {showForTab && tab === "movements" && data?.rows ? (
         <MovementsTable rows={data.rows as Record<string, unknown>[]} />
       ) : null}
-      {tab === "recall" && data ? <RecallView data={data} /> : null}
-      {tab === "sales" && data?.rows ? <SalesTable data={data} /> : null}
+      {showForTab && tab === "recall" && data ? <RecallView data={data} /> : null}
+      {showForTab && tab === "sales" && data?.rows ? <SalesTable data={data} /> : null}
     </div>
   );
 }
@@ -193,15 +205,18 @@ function MovementsTable({ rows }: { rows: Record<string, unknown>[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={String(r.id)} className="border-t border-[var(--line)]">
+          {rows.map((r, i) => (
+            <tr
+              key={String(r.id ?? `${r.created_at}-${r.product_code}-${r.batch_code}-${i}`)}
+              className="border-t border-[var(--line)]"
+            >
               <td className="py-2 pr-2 text-xs">
                 {r.created_at ? new Date(String(r.created_at)).toLocaleString("en-PK") : "—"}
               </td>
-              <td className="py-2 pr-2">{String(r.movement_type)}</td>
-              <td className="py-2 pr-2">{String(r.product_code)}</td>
-              <td className="py-2 pr-2 font-mono text-xs">{String(r.batch_code)}</td>
-              <td className="py-2 pr-2">{String(r.qty_units)}</td>
+              <td className="py-2 pr-2">{String(r.movement_type ?? "—")}</td>
+              <td className="py-2 pr-2">{String(r.product_code ?? "—")}</td>
+              <td className="py-2 pr-2 font-mono text-xs">{String(r.batch_code ?? "—")}</td>
+              <td className="py-2 pr-2">{String(r.qty_units ?? "—")}</td>
               <td className="py-2 pr-2">
                 {String(r.document_no || "—")}
                 <div className="text-xs text-[var(--ink-muted)]">{String(r.document_type || "")}</div>

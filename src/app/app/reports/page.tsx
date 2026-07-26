@@ -14,7 +14,6 @@ export default async function ReportsPage() {
     <div>
       <PageHeader
         title="Reports"
-        description="Stock & value, movements, batch recall (where did this batch go?), and sales. CSV for Admin/Manager."
       />
       <ReportsClient canExport={can(profile?.role as AppRole, "exportPdfCsv")} />
     </div>

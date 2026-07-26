@@ -2,6 +2,7 @@
 
 export type DocScope =
   | "all"
+  | "po"
   | "grn"
   | "picklist"
   | "gate_pass"
@@ -21,7 +22,10 @@ export type SearchHit = {
   href: string;
 };
 
+/** Dashboard / unknown menus → overall. Specific menus → that document type only. */
 export function searchScopeFromPath(pathname: string): DocScope {
+  if (pathname === "/app" || pathname === "/app/") return "all";
+  if (pathname.startsWith("/app/po")) return "po";
   if (pathname.startsWith("/app/grn")) return "grn";
   if (pathname.startsWith("/app/picklists")) return "picklist";
   if (pathname.startsWith("/app/gate-passes")) return "gate_pass";
@@ -31,12 +35,17 @@ export function searchScopeFromPath(pathname: string): DocScope {
   if (pathname.startsWith("/app/write-offs")) return "write_off";
   if (pathname.startsWith("/app/cash-collections")) return "cash_collection";
   if (pathname.startsWith("/app/masters")) return "customer";
+  if (pathname.startsWith("/app/stock-ops")) return "sku";
   if (pathname.startsWith("/app/stock")) return "sku";
+  if (pathname.startsWith("/app/scan")) return "sku";
+  // Reports, warehouse, admin, etc. stay overall
   return "all";
 }
 
 export function searchPlaceholder(scope: DocScope): string {
   switch (scope) {
+    case "po":
+      return "Search PO no / supplier…";
     case "grn":
       return "Search GRN no / supplier DN…";
     case "picklist":
@@ -64,6 +73,8 @@ export function searchPlaceholder(scope: DocScope): string {
 
 export function scopeLabel(scope: DocScope): string {
   switch (scope) {
+    case "po":
+      return "PO";
     case "grn":
       return "GRN";
     case "picklist":

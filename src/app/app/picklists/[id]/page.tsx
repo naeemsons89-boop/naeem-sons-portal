@@ -20,7 +20,6 @@ export default async function PicklistDetailPage({ params }: Props) {
     <div>
       <PageHeader
         title="Picklist"
-        description="Pick with FEFO → manager issues unique gate pass → load-in returns."
       />
       <PicklistDetailClient
         picklistId={id}

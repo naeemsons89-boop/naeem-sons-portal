@@ -18,6 +18,24 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("warehouse_operator");
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, AppRole | "">>(() =>
+    Object.fromEntries(initialUsers.map((u) => [u.id, (u.role as AppRole | null) ?? ""])),
+  );
+
+  async function refreshUsers() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) {
+      const list = data as Profile[];
+      setUsers(list);
+      setRoleDrafts(
+        Object.fromEntries(list.map((u) => [u.id, (u.role as AppRole | null) ?? ""])),
+      );
+    }
+  }
 
   async function sendInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -43,18 +61,12 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
     setInviteEmail("");
     setInviteName("");
     router.refresh();
-    // Soft refresh list
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setUsers(data as Profile[]);
+    await refreshUsers();
   }
 
   async function updateUser(
     id: string,
-    patch: { status?: UserStatus; role?: AppRole; rejection_reason?: string },
+    patch: { status?: UserStatus; role?: AppRole | null; rejection_reason?: string | null },
   ) {
     setBusyId(id);
     setError(null);
@@ -63,13 +75,18 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
       data: { user },
     } = await supabase.auth.getUser();
 
+    const payload: Record<string, unknown> = { ...patch };
+    if (patch.status === "approved") {
+      payload.approved_by = user?.id ?? null;
+      payload.approved_at = new Date().toISOString();
+      payload.rejection_reason = null;
+    } else if (patch.status === "rejected" || patch.status === "suspended") {
+      payload.approved_at = null;
+    }
+
     const { data, error: updateError } = await supabase
       .from("profiles")
-      .update({
-        ...patch,
-        approved_by: user?.id ?? null,
-        approved_at: patch.status === "approved" ? new Date().toISOString() : null,
-      })
+      .update(payload)
       .eq("id", id)
       .select("*")
       .single();
@@ -81,6 +98,11 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
     }
     setUsers((prev) => prev.map((u) => (u.id === id ? (data as Profile) : u)));
     router.refresh();
+  }
+
+  function selectedRole(userId: string): AppRole | undefined {
+    const value = roleDrafts[userId];
+    return value ? (value as AppRole) : undefined;
   }
 
   return (
@@ -142,73 +164,139 @@ export function UsersAdminClient({ initialUsers }: { initialUsers: Profile[] }) 
         <h2 className="mb-3 font-semibold">All users</h2>
         <div className="space-y-3">
           {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-          {users.map((user) => (
-            <Card
-              key={user.id}
-              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <Avatar src={user.avatar_url} name={user.full_name ?? user.email} />
-                <div>
-                  <p className="font-semibold">{user.full_name ?? "—"}</p>
-                  <p className="text-sm text-[var(--ink-muted)]">{user.email}</p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <Badge tone={statusTone(user.status)} className="capitalize">
-                      {user.status}
-                    </Badge>
-                    {user.role ? <Badge tone="mint">{ROLE_LABELS[user.role]}</Badge> : null}
+          {users.map((user) => {
+            const busy = busyId === user.id;
+            const draftRole = selectedRole(user.id);
+            return (
+              <Card
+                key={user.id}
+                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar src={user.avatar_url} name={user.full_name ?? user.email} />
+                  <div>
+                    <p className="font-semibold">{user.full_name ?? "—"}</p>
+                    <p className="text-sm text-[var(--ink-muted)]">{user.email}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge tone={statusTone(user.status)} className="capitalize">
+                        {user.status}
+                      </Badge>
+                      {user.role ? (
+                        <Badge tone="mint">{ROLE_LABELS[user.role]}</Badge>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                  defaultValue={user.role ?? ""}
-                  id={`role-${user.id}`}
-                  disabled={busyId === user.id}
-                >
-                  <option value="" disabled>
-                    Select role
-                  </option>
-                  {ALL_ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  disabled={busyId === user.id}
-                  onClick={() => {
-                    const select = document.getElementById(
-                      `role-${user.id}`,
-                    ) as HTMLSelectElement | null;
-                    const role = select?.value as AppRole | undefined;
-                    if (!role) {
-                      setError("Select a role before approving");
-                      return;
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm"
+                    value={roleDrafts[user.id] ?? ""}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setRoleDrafts((prev) => ({
+                        ...prev,
+                        [user.id]: e.target.value as AppRole | "",
+                      }))
                     }
-                    void updateUser(user.id, { status: "approved", role });
-                  }}
-                >
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={busyId === user.id}
-                  onClick={() =>
-                    void updateUser(user.id, {
-                      status: "rejected",
-                      rejection_reason: "Rejected by admin",
-                    })
-                  }
-                >
-                  Reject
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  >
+                    <option value="" disabled>
+                      Select role
+                    </option>
+                    {ALL_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </select>
+
+                  {(user.status === "pending" || user.status === "rejected") && (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (!draftRole) {
+                          setError("Select a role before approving");
+                          return;
+                        }
+                        void updateUser(user.id, { status: "approved", role: draftRole });
+                      }}
+                    >
+                      Approve
+                    </Button>
+                  )}
+
+                  {user.status === "approved" && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy || !draftRole || draftRole === user.role}
+                      onClick={() => {
+                        if (!draftRole) {
+                          setError("Select a role");
+                          return;
+                        }
+                        void updateUser(user.id, { role: draftRole });
+                      }}
+                    >
+                      Save role
+                    </Button>
+                  )}
+
+                  {user.status === "approved" && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={busy}
+                      onClick={() =>
+                        void updateUser(user.id, {
+                          status: "suspended",
+                          rejection_reason: "Suspended by admin",
+                        })
+                      }
+                    >
+                      Suspend
+                    </Button>
+                  )}
+
+                  {user.status === "suspended" && (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (!draftRole) {
+                          setError("Select a role before unsuspending");
+                          return;
+                        }
+                        void updateUser(user.id, {
+                          status: "approved",
+                          role: draftRole,
+                          rejection_reason: null,
+                        });
+                      }}
+                    >
+                      Unsuspend
+                    </Button>
+                  )}
+
+                  {user.status !== "rejected" && user.status !== "suspended" && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={busy}
+                      onClick={() =>
+                        void updateUser(user.id, {
+                          status: "rejected",
+                          rejection_reason: "Rejected by admin",
+                        })
+                      }
+                    >
+                      Reject
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
           {users.length === 0 ? <EmptyState>No users yet.</EmptyState> : null}
         </div>
       </div>

@@ -44,7 +44,7 @@ do $$ begin create type public.doc_status as enum (
 ); exception when duplicate_object then null; end $$;
 
 do $$ begin create type public.payment_method as enum (
-  'cash','online','cheque'
+  'cash','online','cheque','credit'
 ); exception when duplicate_object then null; end $$;
 
 do $$ begin create type public.movement_type as enum (
@@ -498,7 +498,8 @@ insert into public.doc_sequences (doc_type, prefix, next_no) values
   ('exchange', 'EX', 1),
   ('foc', 'FOC', 1),
   ('write_off', 'WO', 1),
-  ('cash_collection', 'CC', 1)
+  ('cash_collection', 'CC', 1),
+  ('invoice', 'INV', 1)
 on conflict (doc_type) do nothing;
 
 -- ─── 3) Functions / triggers ─────────────────────────────────────────────────

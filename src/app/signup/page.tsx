@@ -3,28 +3,47 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { PasswordStrength } from "@/components/password-strength";
 import { Button, Card, Input, Label, TextLink } from "@/components/ui";
+import { checkPassword, passwordsMatch } from "@/lib/password";
+import { routeAfterSignIn } from "@/lib/post-login";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const strength = checkPassword(password);
+    if (!strength.ok) {
+      setError(strength.message);
+      return;
+    }
+    if (!passwordsMatch(password, confirm)) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
     const supabase = createClient();
     const emailNorm = email.trim().toLowerCase();
     const { data, error: authError } = await supabase.auth.signUp({
       email: emailNorm,
       password,
       options: {
-        data: { full_name: fullName.trim() },
+        data: {
+          full_name: fullName.trim(),
+          phone: phone.trim() || undefined,
+        },
       },
     });
     if (authError) {
@@ -33,24 +52,20 @@ export default function SignupPage() {
       return;
     }
 
-    // If session exists, route by approval status
     if (data.session?.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("status,role")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
-      setLoading(false);
-      if (profile?.status === "approved" && profile.role) {
-        router.push("/app");
-      } else {
-        router.push("/pending");
+      if (phone.trim()) {
+        await supabase
+          .from("profiles")
+          .update({ phone: phone.trim() })
+          .eq("id", data.session.user.id);
       }
+      const dest = await routeAfterSignIn(supabase, data.session.user.id, null);
+      setLoading(false);
+      router.push(dest);
       router.refresh();
       return;
     }
 
-    // No session (email confirm required) — ask user to log in after confirming
     setLoading(false);
     router.push("/login?registered=1");
     router.refresh();
@@ -76,6 +91,16 @@ export default function SignupPage() {
             />
           </div>
           <div>
+            <Label htmlFor="phone">Phone (optional)</Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="03XX-XXXXXXX"
+              autoComplete="tel"
+            />
+          </div>
+          <div>
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -97,10 +122,21 @@ export default function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <PasswordStrength password={password} />
           </div>
-          {error ? (
-            <p className="text-sm text-[var(--danger)]">{error}</p>
-          ) : null}
+          <div>
+            <Label htmlFor="confirm">Confirm password</Label>
+            <Input
+              id="confirm"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </div>
+          {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating…" : "Create account"}
           </Button>

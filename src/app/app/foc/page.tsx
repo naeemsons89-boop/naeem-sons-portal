@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { FocClient } from "@/components/foc-client";
 import { PageHeader } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
@@ -10,7 +10,8 @@ import type { AppRole } from "@/types/database";
 
 export default async function FocPage() {
   const { profile } = await getSessionProfile();
-  if (!can(profile?.role as AppRole, "focExchange")) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!can(role, "focExchange")) redirect("/app");
 
   const supabase = await createClient();
   const [{ data: customers }, { data: skus }, { data: reasons }, { data: foc }, { data: wh }] =
@@ -34,7 +35,7 @@ export default async function FocPage() {
   if (!wh?.id) {
     return (
       <div>
-        <PageHeader title="FOC" description="MAIN_WHS missing" />
+        <PageHeader title="FOC" />
       </div>
     );
   }
@@ -43,11 +44,13 @@ export default async function FocPage() {
     <div>
       <PageHeader
         title="FOC / Sampling"
-        description="Issues free goods from pickable stock. Fixed auto numbers: FOC000001…"
+        download={
+          <DownloadReportBar
+            reportType="foc"
+            canExport={can(role, "exportPdfCsv")}
+          />
+        }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="foc" variant="page" />
-      </div>
       <FocClient
         customers={(customers ?? []) as { id: string; code: string; name: string }[]}
         skus={(skus ?? []) as { id: string; product_code: string; description: string }[]}

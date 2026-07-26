@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeftRight,
   BarChart3,
-  Bell,
   Boxes,
   ChevronDown,
   ClipboardList,
@@ -17,7 +16,6 @@ import {
   LayoutDashboard,
   LibraryBig,
   LogOut,
-  Mail,
   Menu,
   PackagePlus,
   RefreshCw,
@@ -34,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { Avatar, Badge } from "@/components/ui";
+import { AppShellProvider } from "@/components/app-shell-context";
 import { DocumentSearch } from "@/components/document-search";
 import { can } from "@/lib/permissions";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -83,7 +82,6 @@ const buildChildren: NavItem[] = [
 ];
 
 const generalGroup: NavItem[] = [
-  { href: "/app/cash-collections", label: "Collections", icon: Wallet },
   { href: "/app/reports", label: "Reports", icon: BarChart3, reportsOnly: true },
   { href: "/app/admin/imports", label: "CSV Import", icon: Settings, adminOnly: true },
 ];
@@ -235,6 +233,14 @@ function SidebarNav({
             />
           ))}
 
+          <NavLink
+            href="/app/cash-collections"
+            label="Collections"
+            icon={Wallet}
+            active={isActive(pathname, "/app/cash-collections")}
+            onNavigate={onNavigate}
+          />
+
           <CollapsibleGroup
             label="Warehouse"
             icon={Warehouse}
@@ -274,7 +280,14 @@ function SidebarNav({
               />
             ))}
           </CollapsibleGroup>
+        </div>
+      </div>
 
+      <div>
+        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
+          General
+        </p>
+        <div className="space-y-1">
           {buildItems.length > 0 ? (
             <CollapsibleGroup
               label="Build"
@@ -296,14 +309,6 @@ function SidebarNav({
               ))}
             </CollapsibleGroup>
           ) : null}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">
-          General
-        </p>
-        <div className="space-y-1">
           {generalItems.map((item) => (
             <NavLink
               key={item.href}
@@ -330,7 +335,6 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const role = profile.role as AppRole | null;
-  const [profileOpen, setProfileOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -368,6 +372,13 @@ export function AppShell({
   ];
 
   return (
+    <AppShellProvider
+      value={{
+        profile,
+        displayName,
+        signOut,
+      }}
+    >
     <div className="min-h-screen bg-[var(--background)] lg:flex lg:gap-4 lg:p-4">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:w-[264px] lg:shrink-0 lg:flex-col lg:rounded-3xl lg:bg-[var(--brand-ink)] lg:p-4 lg:shadow-[var(--shadow-panel)]">
@@ -484,7 +495,11 @@ export function AppShell({
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-3"
             >
-              <Avatar src={profile.avatar_url} name={displayName} size="sm" />
+              <Avatar
+                src={profile.avatar_url}
+                name={displayName}
+                size="sm"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-white">{displayName}</p>
                 <p className="truncate text-[11px] text-white/50">View profile</p>
@@ -519,71 +534,18 @@ export function AppShell({
             </p>
             <p className="truncate text-[11px] text-[var(--ink-muted)]">{roleLabel}</p>
           </div>
-          <Link href="/app/profile" className="shrink-0">
-            <Avatar src={profile.avatar_url} name={displayName} size="sm" />
+          <Link href="/app/profile" className="shrink-0" title={displayName}>
+            <Avatar
+              src={profile.avatar_url}
+              name={displayName}
+              size="sm"
+            />
           </Link>
         </header>
 
-        {/* Desktop topbar */}
-        <header className="hidden w-full items-center gap-4 px-2 pb-4 pt-1 lg:flex">
-          <div className="relative w-full max-w-md shrink">
-            <DocumentSearch pathname={pathname} className="w-full" />
-          </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              className="rounded-full border border-[var(--line)] bg-white p-2.5 text-[var(--ink-muted)] hover:text-[var(--ink)]"
-              title="Messages"
-            >
-              <Mail className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="relative rounded-full border border-[var(--line)] bg-white p-2.5 text-[var(--ink-muted)] hover:text-[var(--ink)]"
-              title="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-            </button>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setProfileOpen((v) => !v)}
-                className="flex items-center gap-2.5 rounded-full border border-[var(--line)] bg-white py-1.5 pl-1.5 pr-3.5 hover:bg-[var(--surface-2)]"
-              >
-                <Avatar src={profile.avatar_url} name={displayName} size="sm" />
-                <span className="text-left">
-                  <span className="block text-sm font-semibold leading-tight text-[var(--ink)]">
-                    {displayName}
-                  </span>
-                  <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">
-                    {profile.email}
-                  </span>
-                </span>
-              </button>
-              {profileOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-48 overflow-hidden rounded-xl border border-[var(--line)] bg-white py-1 shadow-[var(--shadow-card)]">
-                  <Link
-                    href="/app/profile"
-                    onClick={() => setProfileOpen(false)}
-                    className="block px-4 py-2 text-sm font-medium text-[var(--ink)] hover:bg-[var(--surface-2)]"
-                  >
-                    View profile
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    className="block w-full px-4 py-2 text-left text-sm font-medium text-[var(--danger)] hover:bg-[var(--surface-2)]"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 px-4 pb-24 sm:px-6 lg:px-2 lg:pb-8">{children}</main>
+        <main className="flex-1 px-4 pb-24 pt-2 sm:px-6 lg:px-2 lg:pb-8 lg:pt-1">
+          {children}
+        </main>
 
         {/* Mobile bottom bar — shortcuts + Menu */}
         <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--line)] bg-[var(--surface)]/95 px-1 pb-[env(safe-area-inset-bottom)] pt-1.5 backdrop-blur lg:hidden">
@@ -620,9 +582,6 @@ export function AppShell({
         </nav>
       </div>
     </div>
+    </AppShellProvider>
   );
-}
-
-export function RoleBadge({ role }: { role: AppRole | null }) {
-  return <Badge tone="mint">{role ? ROLE_LABELS[role] : "No role"}</Badge>;
 }

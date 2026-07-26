@@ -14,7 +14,6 @@ export default async function WarehousePage() {
     <div>
       <PageHeader
         title="Warehouse structure"
-        description="Create warehouses, racks, and bins. MAIN_WHS is already seeded."
       />
       <WarehouseClient
         canManage={can(profile.role as AppRole, "manageWarehouseStructure")}

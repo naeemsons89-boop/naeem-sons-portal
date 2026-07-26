@@ -23,7 +23,6 @@ export default async function UsersAdminPage() {
     <div>
       <PageHeader
         title="Users & invites"
-        description="Invite staff by email with a role, or approve self-signups. Invites send a password setup link."
       />
       <UsersAdminClient initialUsers={(users ?? []) as Profile[]} />
     </div>

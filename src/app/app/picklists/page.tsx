@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { Badge, Button, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -37,7 +37,12 @@ export default async function PicklistsPage() {
     <div>
       <PageHeader
         title="Picklists"
-        description="FEFO pick → manager gate pass → load-in. Fixed auto numbers: PL000001…"
+        download={
+          <DownloadReportBar
+            reportType="picklists"
+            canExport={can(role, "exportPdfCsv")}
+          />
+        }
         actions={
           can(role, "createPicklist") ? (
             <Link href="/app/picklists/new">
@@ -46,9 +51,6 @@ export default async function PicklistsPage() {
           ) : null
         }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="picklist" variant="page" />
-      </div>
       <div className="space-y-3">
         {picklists.map((p) => (
           <Link key={p.id} href={`/app/picklists/${p.id}`}>

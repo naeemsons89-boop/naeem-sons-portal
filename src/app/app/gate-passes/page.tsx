@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DocumentSearch } from "@/components/document-search";
+import { DownloadReportBar } from "@/components/download-report-bar";
 import { Badge, Card, EmptyState, PageHeader, statusTone } from "@/components/ui";
 import { getSessionProfile } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { canTouchPicklist } from "@/lib/picklist-server";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/types/database";
 
 export default async function GatePassesPage() {
   const { profile } = await getSessionProfile();
-  if (!canTouchPicklist(profile?.role as AppRole)) redirect("/app");
+  const role = profile?.role as AppRole;
+  if (!canTouchPicklist(role)) redirect("/app");
 
   const supabase = await createClient();
   const { data: raw } = await supabase
@@ -38,11 +40,13 @@ export default async function GatePassesPage() {
     <div>
       <PageHeader
         title="Gate passes"
-        description="Each picklist gets one unique outward gate pass (GP000001…)."
+        download={
+          <DownloadReportBar
+            reportType="gate_passes"
+            canExport={can(role, "exportPdfCsv")}
+          />
+        }
       />
-      <div className="mb-4 max-w-xl">
-        <DocumentSearch scope="gate_pass" variant="page" />
-      </div>
       <div className="space-y-3">
         {rows.map((g) => (
           <Card key={g.id}>

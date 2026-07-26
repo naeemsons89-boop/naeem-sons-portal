@@ -16,7 +16,6 @@ export default async function ImportsPage() {
     <div>
       <PageHeader
         title="CSV imports"
-        description="Admin only. Upload SKU price list, opening inventory (with pricing), and customer opening balances."
       />
       <ImportsClient />
     </div>

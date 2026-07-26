@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeNextPath } from "@/lib/auth-paths";
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -36,7 +38,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/signup") ||
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
-    path.startsWith("/auth");
+    path.startsWith("/auth") ||
+    path.startsWith("/mfa");
   const isPublic =
     isAuthRoute || path === "/" || path.startsWith("/pending") || path.startsWith("/offline");
 
@@ -47,7 +50,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Recovery email lands on /reset-password with a session — do not bounce to /app
+  // Recovery / MFA pages keep their session without bouncing to /app
   if (
     user &&
     (path === "/login" || path === "/signup" || path === "/forgot-password")
@@ -55,6 +58,17 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/app";
     return NextResponse.redirect(url);
+  }
+
+  // Require AAL2 when MFA is enrolled before entering the portal
+  if (user && path.startsWith("/app")) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/mfa";
+      url.searchParams.set("next", safeNextPath(path));
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

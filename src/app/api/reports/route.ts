@@ -130,6 +130,15 @@ export async function GET(request: Request) {
       .limit(1000);
     if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
     if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const documentTypeParam = (url.searchParams.get("document_type") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (documentTypeParam.length === 1) {
+      query = query.eq("document_type", documentTypeParam[0]);
+    } else if (documentTypeParam.length > 1) {
+      query = query.in("document_type", documentTypeParam);
+    }
     if (q) {
       // filter after fetch for simplicity on batch/sku text
     }
@@ -189,10 +198,14 @@ export async function GET(request: Request) {
         headers,
         rows.map((r) => headers.map((h) => (r as Record<string, unknown>)[h])),
       );
+      const filename =
+        documentTypeParam.length > 0
+          ? `${documentTypeParam.join("-")}-movements.csv`
+          : "movements-report.csv";
       return new NextResponse(body, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="movements-report.csv"',
+          "Content-Disposition": `attachment; filename="${filename}"`,
         },
       });
     }
@@ -405,6 +418,417 @@ export async function GET(request: Request) {
       sale_amount: rows.reduce((s, r) => s + r.sale_amount, 0),
     };
     return NextResponse.json({ rows, totals, showFinance });
+  }
+
+  // ─── Document register CSVs (per-menu downloads) ─────────────────────────
+
+  function csvResponse(filename: string, headers: string[], rows: Array<Record<string, unknown>>) {
+    const body = toCsv(
+      headers,
+      rows.map((r) => headers.map((h) => r[h])),
+    );
+    return new NextResponse(body, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  }
+
+  if (type === "po") {
+    let query = admin
+      .from("purchase_orders")
+      .select(
+        "po_no,order_date,expected_date,status,remarks,created_at,supplier:suppliers(code,name),warehouse:warehouses(code),lines:purchase_order_lines(line_amount,qty_ordered,uom)",
+      )
+      .order("order_date", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("order_date", from);
+    if (to) query = query.lte("order_date", to);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((po) => {
+      const supplier = po.supplier as { code?: string; name?: string } | null;
+      const wh = po.warehouse as { code?: string } | null;
+      const lines = (po.lines as { line_amount?: number; qty_ordered?: number; uom?: string }[]) ?? [];
+      const total = lines.reduce((s, l) => s + Number(l.line_amount ?? 0), 0);
+      const qty = lines.reduce((s, l) => s + Number(l.qty_ordered ?? 0), 0);
+      return {
+        po_no: po.po_no,
+        order_date: po.order_date,
+        expected_date: po.expected_date ?? "",
+        status: po.status,
+        supplier_code: supplier?.code ?? "",
+        supplier_name: supplier?.name ?? "",
+        warehouse: wh?.code ?? "",
+        line_count: lines.length,
+        qty_ordered: qty,
+        total_amount: total,
+        remarks: po.remarks ?? "",
+        created_at: po.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "po-report.csv",
+        [
+          "po_no",
+          "order_date",
+          "expected_date",
+          "status",
+          "supplier_code",
+          "supplier_name",
+          "warehouse",
+          "line_count",
+          "qty_ordered",
+          "total_amount",
+          "remarks",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "grn") {
+    let query = admin
+      .from("grns")
+      .select(
+        "grn_no,supplier_delivery_no,delivery_date,status,finance_status,physical_posted_at,truck_no,transporter_name,invoice_total_amount,created_at,supplier:suppliers(code,name),po:purchase_orders(po_no),warehouse:warehouses(code)",
+      )
+      .order("delivery_date", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("delivery_date", from);
+    if (to) query = query.lte("delivery_date", to);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((g) => {
+      const supplier = g.supplier as { code?: string; name?: string } | null;
+      const po = g.po as { po_no?: string } | null;
+      const wh = g.warehouse as { code?: string } | null;
+      return {
+        grn_no: g.grn_no,
+        po_no: po?.po_no ?? "",
+        delivery_date: g.delivery_date,
+        supplier_dn: g.supplier_delivery_no ?? "",
+        status: g.status,
+        finance_status: g.finance_status,
+        physical_posted: g.physical_posted_at ? "yes" : "no",
+        supplier_code: supplier?.code ?? "",
+        supplier_name: supplier?.name ?? "",
+        warehouse: wh?.code ?? "",
+        truck_no: g.truck_no ?? "",
+        transporter: g.transporter_name ?? "",
+        invoice_total: g.invoice_total_amount ?? "",
+        created_at: g.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "grn-report.csv",
+        [
+          "grn_no",
+          "po_no",
+          "delivery_date",
+          "supplier_dn",
+          "status",
+          "finance_status",
+          "physical_posted",
+          "supplier_code",
+          "supplier_name",
+          "warehouse",
+          "truck_no",
+          "transporter",
+          "invoice_total",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "picklists") {
+    let query = admin
+      .from("picklists")
+      .select(
+        "picklist_no,delivery_date,status,load_out_at,load_in_at,created_at,warehouse:warehouses(code)",
+      )
+      .order("delivery_date", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("delivery_date", from);
+    if (to) query = query.lte("delivery_date", to);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((p) => {
+      const wh = p.warehouse as { code?: string } | null;
+      return {
+        picklist_no: p.picklist_no,
+        delivery_date: p.delivery_date,
+        status: p.status,
+        warehouse: wh?.code ?? "",
+        load_out_at: p.load_out_at ?? "",
+        load_in_at: p.load_in_at ?? "",
+        created_at: p.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "picklists-report.csv",
+        [
+          "picklist_no",
+          "delivery_date",
+          "status",
+          "warehouse",
+          "load_out_at",
+          "load_in_at",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "gate_passes") {
+    let query = admin
+      .from("gate_passes")
+      .select(
+        "gate_pass_no,status,issued_at,security_out_at,security_out_by_name,created_at,warehouse:warehouses(code),picklist:picklists(picklist_no,delivery_date)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((g) => {
+      const wh = g.warehouse as { code?: string } | null;
+      const pl = g.picklist as { picklist_no?: string; delivery_date?: string } | null;
+      return {
+        gate_pass_no: g.gate_pass_no,
+        status: g.status,
+        picklist_no: pl?.picklist_no ?? "",
+        delivery_date: pl?.delivery_date ?? "",
+        warehouse: wh?.code ?? "",
+        issued_at: g.issued_at ?? "",
+        security_out_at: g.security_out_at ?? "",
+        security_out_by: g.security_out_by_name ?? "",
+        created_at: g.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "gate-passes-report.csv",
+        [
+          "gate_pass_no",
+          "status",
+          "picklist_no",
+          "delivery_date",
+          "warehouse",
+          "issued_at",
+          "security_out_at",
+          "security_out_by",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "returns") {
+    let query = admin
+      .from("return_receipts")
+      .select(
+        "return_no,invoice_no,status,posted_at,created_at,customer:customers(code,name),warehouse:warehouses(code)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((r) => {
+      const customer = r.customer as { code?: string; name?: string } | null;
+      const wh = r.warehouse as { code?: string } | null;
+      return {
+        return_no: r.return_no,
+        status: r.status,
+        invoice_no: r.invoice_no ?? "",
+        customer_code: customer?.code ?? "",
+        customer_name: customer?.name ?? "",
+        warehouse: wh?.code ?? "",
+        posted_at: r.posted_at ?? "",
+        created_at: r.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "returns-report.csv",
+        [
+          "return_no",
+          "status",
+          "invoice_no",
+          "customer_code",
+          "customer_name",
+          "warehouse",
+          "posted_at",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "write_offs") {
+    let query = admin
+      .from("write_offs")
+      .select(
+        "write_off_no,status,posted_at,created_at,warehouse:warehouses(code),reason:reason_codes(code,label)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((w) => {
+      const wh = w.warehouse as { code?: string } | null;
+      const reason = w.reason as { code?: string; label?: string } | null;
+      return {
+        write_off_no: w.write_off_no,
+        status: w.status,
+        warehouse: wh?.code ?? "",
+        reason_code: reason?.code ?? "",
+        reason_label: reason?.label ?? "",
+        posted_at: w.posted_at ?? "",
+        created_at: w.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "write-offs-report.csv",
+        [
+          "write_off_no",
+          "status",
+          "warehouse",
+          "reason_code",
+          "reason_label",
+          "posted_at",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "exchanges") {
+    let query = admin
+      .from("exchange_notes")
+      .select(
+        "exchange_no,status,posted_at,created_at,customer:customers(code,name),warehouse:warehouses(code)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((e) => {
+      const customer = e.customer as { code?: string; name?: string } | null;
+      const wh = e.warehouse as { code?: string } | null;
+      return {
+        exchange_no: e.exchange_no,
+        status: e.status,
+        customer_code: customer?.code ?? "",
+        customer_name: customer?.name ?? "",
+        warehouse: wh?.code ?? "",
+        posted_at: e.posted_at ?? "",
+        created_at: e.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "exchanges-report.csv",
+        [
+          "exchange_no",
+          "status",
+          "customer_code",
+          "customer_name",
+          "warehouse",
+          "posted_at",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
+  }
+
+  if (type === "foc") {
+    let query = admin
+      .from("foc_issues")
+      .select(
+        "foc_no,status,posted_at,created_at,customer:customers(code,name),warehouse:warehouses(code),picklist:picklists(picklist_no)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (from) query = query.gte("created_at", `${from}T00:00:00+05:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59+05:00`);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    const rows = (data ?? []).map((f) => {
+      const customer = f.customer as { code?: string; name?: string } | null;
+      const wh = f.warehouse as { code?: string } | null;
+      const pl = f.picklist as { picklist_no?: string } | null;
+      return {
+        foc_no: f.foc_no,
+        status: f.status,
+        customer_code: customer?.code ?? "",
+        customer_name: customer?.name ?? "",
+        warehouse: wh?.code ?? "",
+        picklist_no: pl?.picklist_no ?? "",
+        posted_at: f.posted_at ?? "",
+        created_at: f.created_at,
+      };
+    });
+
+    if (format === "csv") {
+      return csvResponse(
+        "foc-report.csv",
+        [
+          "foc_no",
+          "status",
+          "customer_code",
+          "customer_name",
+          "warehouse",
+          "picklist_no",
+          "posted_at",
+          "created_at",
+        ],
+        rows,
+      );
+    }
+    return NextResponse.json({ rows });
   }
 
   return NextResponse.json({ error: "Unknown report type" }, { status: 400 });

@@ -86,7 +86,6 @@ export default async function NewGrnPage({ searchParams }: Props) {
     <div>
       <PageHeader
         title="New GRN"
-        description="Select a purchase order, enter batch/QC details, then receive into warehouse."
       />
       {openPos.length === 0 ? (
         <p className="text-sm text-[var(--ink-muted)]">
